@@ -31,7 +31,7 @@ CELLS = [
 ![3D view of the model]({REPO}/raw/main/docs/images/demo.gif)
 
 ### What this notebook does, from scratch
-1. Installs the package and runs its **22 unit tests**.
+1. Clones the repository and runs its **24 tests** (unit tests plus an end-to-end run of the pipeline).
 2. Shows the building block: **spiking cortical neurons**.
 3. Trains the network with **surrogate-gradient backpropagation through time** (machine learning).
 4. Trains the same network with **reward-modulated STDP** (dopamine as a reward-prediction error, closer to how brains learn).
@@ -85,7 +85,7 @@ print(f"Python {platform.python_version()} · PyTorch {torch.__version__} · "
     md("""
 ## 2 · Run the test suite
 
-22 tests cover the neuron models, the task, Dale's law, the sign of the STDP updates, the analysis code and the 3D export.
+24 tests cover the neuron models, the task, Dale's law, the sign of the STDP updates, the analysis code, the 3D export and an end-to-end run of the whole command-line pipeline (99 % line coverage).
 """),
     code("""
 result = subprocess.run([sys.executable, "-m", "pytest", "-q"], capture_output=True, text=True)
