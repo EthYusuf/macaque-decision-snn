@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "macaque-decision-snn: a spiking model of macaque MT and LIP that learns perceptual decisions"
+authors:
+  - given-names: "Muhammed Yusuf"
+    family-names: "Adın"
+    alias: "EthYusuf"
+version: 1.0.0
+date-released: 2026-10-04
+license: MIT
+repository-code: "https://github.com/EthYusuf/macaque-decision-snn"
+url: "https://ethyusuf.github.io/macaque-decision-snn/"
+keywords:
+  - spiking neural networks
+  - computational neuroscience
+  - decision making
+  - surrogate gradient
+  - reward-modulated STDP
