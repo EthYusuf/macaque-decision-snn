@@ -1,0 +1,1263 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Makak Beyni 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg0: #04060a;
+    --bg1: #0c1424;
+    --ink: #ece6d8;
+    --ink-2: #b9b3a5;
+    --ink-3: #7d796f;
+    --hair: rgba(236, 230, 216, 0.10);
+    --hair-2: rgba(236, 230, 216, 0.18);
+    --glass: rgba(10, 14, 22, 0.62);
+    --left: #4f9bf0;
+    --right: #ef7a45;
+    --inh: #9085e9;
+    --gold: #f2c14e;
+    --grad: #ec5fa0;
+    --mt: #5fd3c4;
+    --serif: "Instrument Serif", Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, monospace;
+    --sans: "IBM Plex Sans", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(1200px 800px at 38% 40%, var(--bg1) 0%, var(--bg0) 62%) fixed, var(--bg0);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+  #scene { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .labels { position: fixed; inset: 0; pointer-events: none; }
+  .grain {
+    position: fixed; inset: -50%; pointer-events: none; opacity: 0.06; z-index: 1;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    animation: grain 1.2s steps(6) infinite;
+  }
+  @keyframes grain { 0%{transform:translate(0,0)} 33%{transform:translate(-3%,2%)} 66%{transform:translate(2%,-3%)} 100%{transform:translate(0,0)} }
+  @media (prefers-reduced-motion: reduce) { .grain { animation: none; } }
+
+  .ui { position: fixed; z-index: 2; }
+  .card {
+    background: var(--glass);
+    border: 1px solid var(--hair);
+    border-radius: 14px;
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  /* --- başlık --- */
+  .brand { top: 22px; left: 26px; max-width: 420px; animation: rise .9s .15s both; }
+  .brand h1 {
+    font-family: var(--serif); font-weight: 400; font-style: italic;
+    font-size: 46px; line-height: 0.98; margin: 6px 0 8px; letter-spacing: -0.01em;
+  }
+  .brand h1 b { font-style: normal; font-weight: 400; color: var(--gold); }
+  .brand p { margin: 0; color: var(--ink-2); line-height: 1.5; max-width: 360px; }
+
+  /* --- uyaran --- */
+  .stim { top: 214px; left: 26px; width: 236px; padding: 12px 14px 10px; animation: rise .9s .35s both; }
+  .stim canvas { display: block; width: 208px; height: 140px; margin-top: 6px; }
+  .stim .cap { font-family: var(--mono); font-size: 11px; color: var(--ink-2); margin-top: 4px; }
+
+  /* --- anlatı --- */
+  .story {
+    left: 26px; bottom: 196px; width: 392px; padding: 14px 18px 14px;
+    animation: rise .9s .55s both;
+  }
+  .story h2 { font-family: var(--serif); font-weight: 400; font-size: 25px; margin: 4px 0 6px; line-height: 1.05; }
+  .story p { margin: 0; color: var(--ink-2); line-height: 1.5; min-height: 58px; }
+  .story p em { color: var(--ink); font-style: normal; font-family: var(--mono); font-size: 12px; }
+
+  /* --- kontrol paneli --- */
+  .panel {
+    top: 18px; right: 18px; width: 316px; max-height: calc(100vh - 200px); overflow: auto;
+    padding: 16px 16px 12px; animation: rise .9s .25s both;
+  }
+  .panel section + section { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--hair); }
+  .seg { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .seg button, .chip {
+    font: 500 12px/1 var(--sans); color: var(--ink-2); background: transparent;
+    border: 1px solid var(--hair-2); border-radius: 999px; padding: 8px 11px; cursor: pointer;
+    transition: color .2s, background .2s, border-color .2s;
+  }
+  .seg button:hover, .chip:hover { color: var(--ink); border-color: rgba(236,230,216,.35); }
+  .seg button[aria-pressed="true"], .chip[aria-pressed="true"] {
+    color: #0b0d12; background: var(--ink); border-color: var(--ink);
+  }
+  .seg button:focus-visible, .chip:focus-visible, .ctrl:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  #curve { display: block; width: 284px; height: 96px; margin-top: 10px; cursor: pointer; }
+  .stage-info { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); margin-top: 6px; line-height: 1.5; }
+  .stage-info b { color: var(--ink); font-weight: 500; }
+  .legend { display: grid; grid-template-columns: 18px 1fr; gap: 7px 9px; align-items: center; margin-top: 9px; color: var(--ink-2); }
+  .sw { width: 12px; height: 12px; border-radius: 50%; justify-self: center; }
+  .sw.wheel { background: conic-gradient(from 90deg, hsl(22 75% 60%), hsl(112 75% 60%), hsl(202 75% 60%), hsl(292 75% 60%), hsl(22 75% 60%)); }
+  .note { font-size: 11.5px; color: var(--ink-3); line-height: 1.5; margin-top: 8px; }
+
+  /* --- zaman çizelgesi --- */
+  .timeline { left: 18px; right: 18px; bottom: 18px; padding: 12px 16px 12px; animation: rise .9s .7s both; }
+  .tl-top { display: flex; align-items: center; gap: 14px; }
+  .ctrl {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--hair-2); background: transparent;
+    color: var(--ink); cursor: pointer; display: grid; place-items: center; flex: none;
+  }
+  .ctrl svg { width: 14px; height: 14px; }
+  .readout { font-family: var(--mono); font-size: 12px; color: var(--ink-2); display: flex; gap: 18px; flex-wrap: wrap; }
+  .readout b { color: var(--ink); font-weight: 500; }
+  .readout .l { color: var(--left); } .readout .r { color: var(--right); }
+  .speed { margin-left: auto; display: flex; gap: 6px; }
+  .speed { margin-top: 0; flex-wrap: nowrap; }
+  .speed button { padding: 6px 9px; font-family: var(--mono); font-size: 11px; }
+  .tl-body { position: relative; margin-top: 10px; }
+  #rates { display: block; width: 100%; height: 64px; }
+  .track { position: relative; height: 30px; margin-top: 4px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+  .track .seg-fix, .track .seg-mov { position: absolute; top: 8px; height: 6px; border-radius: 3px; }
+  .track .seg-fix { background: rgba(236,230,216,.12); }
+  .track .seg-mov { background: linear-gradient(90deg, rgba(236,230,216,.28), rgba(236,230,216,.12)); }
+  .track .lbl { position: absolute; top: 17px; padding-left: 2px; white-space: nowrap; }
+  #scrub { position: absolute; inset: -6px 0 0 0; width: 100%; height: 30px; margin: 0; opacity: 0; cursor: ew-resize; }
+  .playhead { position: absolute; top: -68px; bottom: 8px; width: 1px; background: var(--gold); box-shadow: 0 0 10px var(--gold); pointer-events: none; }
+
+  /* --- 3D etiketleri --- */
+  .area-label {
+    font-family: var(--mono); font-size: 11px; color: var(--ink); letter-spacing: 0.04em;
+    padding: 3px 7px; border-radius: 6px; background: rgba(4,6,10,.55); border: 1px solid var(--hair);
+    white-space: nowrap; transform: translateY(-10px);
+  }
+  .area-label small { color: var(--ink-3); margin-left: 6px; }
+  .cluster-label { font-family: var(--serif); font-size: 19px; color: var(--ink); white-space: nowrap; text-shadow: 0 0 12px #000; }
+  .cluster-label small { display: block; font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); letter-spacing: .05em; }
+  .pool-label { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; text-shadow: 0 0 8px #000; }
+  .decision {
+    font-family: var(--serif); font-size: 24px; white-space: nowrap; padding: 4px 12px; border-radius: 999px;
+    background: rgba(4,6,10,.7); border: 1px solid var(--hair-2); opacity: 0; transition: opacity .4s, transform .4s;
+    transform: translateY(8px);
+  }
+  .decision.on { opacity: 1; transform: translateY(0); }
+  .hidden-labels .area-label, .hidden-labels .cluster-label, .hidden-labels .pool-label { display: none; }
+
+  .err { position: fixed; inset: 0; display: grid; place-items: center; z-index: 9; font-family: var(--mono); color: var(--ink-2); text-align: center; padding: 24px; }
+
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  /* Sunum modu (?clean): yalnızca sahne, başlık ve anlatı */
+  .clean .panel, .clean .stim, .clean .timeline, .clean .panel-toggle { display: none !important; }
+  .clean .story { bottom: 24px; }
+
+  .panel-toggle {
+    display: none; top: 14px; right: 12px; height: 38px; padding: 0 14px; border-radius: 999px;
+    font: 500 12px/1 var(--sans); color: var(--ink); background: var(--glass); border: 1px solid var(--hair-2);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); cursor: pointer;
+  }
+  @media (max-width: 1100px) and (min-width: 761px) {
+    .brand h1 { font-size: 34px; }
+    .stim { display: none; }
+    .story { width: 340px; }
+  }
+  @media (max-width: 760px) {
+    body { font-size: 12px; }
+    .brand { top: 14px; left: 14px; right: 110px; }
+    .brand h1 { font-size: 28px; margin: 4px 0 0; }
+    .brand p, .stim { display: none; }
+    .panel-toggle { display: block; }
+    .panel { display: none; top: 62px; left: 10px; right: 10px; width: auto; max-height: 58vh; }
+    .panel.open { display: block; }
+    #curve { width: 100%; }
+    .story { left: 10px; right: 10px; width: auto; bottom: 172px; padding: 10px 14px; }
+    .story h2 { font-size: 20px; }
+    .story p { font-size: 12px; min-height: 0; }
+    .timeline { left: 8px; right: 8px; bottom: 8px; padding: 10px 12px; }
+    .readout { font-size: 10.5px; gap: 4px 12px; }
+    .speed { display: none; }
+    #rates { height: 44px; }
+    .area-label small, .cluster-label small { display: none; }
+    .cluster-label { font-size: 16px; }
+    .decision { font-size: 18px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="ui brand">
+  <div class="eyebrow">Macaca mulatta · MT → LIP</div>
+  <h1 data-i18n="h1"></h1>
+  <p data-i18n="brandP"></p>
+</header>
+<button class="ui panel-toggle" id="panelToggle" aria-expanded="false" aria-controls="panel" data-i18n="settings"></button>
+
+<section class="ui card stim">
+  <div class="eyebrow" data-i18n="stimEyebrow"></div>
+  <canvas id="dots" width="416" height="280"></canvas>
+  <div class="cap" id="stimCap"></div>
+</section>
+
+<section class="ui card story" aria-live="polite">
+  <div class="eyebrow" id="phaseNo">01 / 05</div>
+  <h2 id="phaseTitle"></h2>
+  <p id="phaseBody"></p>
+</section>
+
+<aside class="ui card panel" id="panel">
+  <section>
+    <div class="eyebrow" data-i18n="language"></div>
+    <div class="seg" id="langSeg"></div>
+  </section>
+  <section>
+    <div class="eyebrow" data-i18n="method"></div>
+    <div class="seg" id="methodSeg"></div>
+  </section>
+  <section>
+    <div class="eyebrow" data-i18n="stage"></div>
+    <canvas id="curve" width="568" height="192"></canvas>
+    <div class="seg" id="stageSeg"></div>
+    <div class="stage-info" id="stageInfo"></div>
+  </section>
+  <section>
+    <div class="eyebrow" data-i18n="stimulus"></div>
+    <div class="seg" id="cohSeg"></div>
+  </section>
+  <section>
+    <div class="eyebrow" data-i18n="layers"></div>
+    <div class="seg" id="layerSeg"></div>
+  </section>
+  <section>
+    <div class="eyebrow" data-i18n="view"></div>
+    <div class="seg" id="viewSeg"></div>
+  </section>
+  <section>
+    <div class="eyebrow" data-i18n="legend"></div>
+    <div class="legend">
+      <span class="sw wheel"></span><span data-i18n="legMt"></span>
+      <span class="sw" style="background:var(--left)"></span><span data-i18n="legLeft"></span>
+      <span class="sw" style="background:var(--right)"></span><span data-i18n="legRight"></span>
+      <span class="sw" style="background:#77746c"></span><span data-i18n="legNonsel"></span>
+      <span class="sw" style="background:var(--inh)"></span><span data-i18n="legInh"></span>
+      <span class="sw" style="background:var(--gold)"></span><span data-i18n="legDopa"></span>
+      <span class="sw" style="background:var(--grad)"></span><span data-i18n="legGrad"></span>
+    </div>
+    <div class="note" data-i18n="note"></div>
+  </section>
+</aside>
+
+<footer class="ui card timeline">
+  <div class="tl-top">
+    <button class="ctrl" id="play">
+      <svg viewBox="0 0 14 14" id="playIcon"><rect x="2" y="1" width="3.4" height="12" rx="1" fill="currentColor"/><rect x="8.6" y="1" width="3.4" height="12" rx="1" fill="currentColor"/></svg>
+    </button>
+    <div class="readout" id="readout"></div>
+    <div class="seg speed" id="speedSeg"></div>
+  </div>
+  <div class="tl-body">
+    <canvas id="rates"></canvas>
+    <div class="track" id="track">
+      <div class="seg-fix" id="segFix"></div>
+      <div class="seg-mov" id="segMov"></div>
+      <span class="lbl" id="lblFix" data-i18n="lblFix"></span>
+      <span class="lbl" id="lblMov" data-i18n="lblMov"></span>
+      <div class="playhead" id="playhead"></div>
+      <input type="range" id="scrub" min="0" max="700" step="1" value="0">
+    </div>
+  </div>
+</footer>
+
+<script>window.BRAIN_DATA = /*__DATA__*/null;</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const D = window.BRAIN_DATA;
+if (!D) {
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="err">No data / Veri yok.<br><br>python -m monkeybrain brain3d</div>');
+  throw new Error('BRAIN_DATA missing');
+}
+// ------------------------------------------------------------------ dil (TR / EN)
+const I18N = {
+  tr: {
+    title: 'Makak Beyni 3D · Bir kararın anatomisi', h1: 'Bir kararın <b>anatomisi</b>',
+    brandP: '264 spiking nöron. Gördüğün her parlama, eğittiğimiz modelin gerçek simülasyonundan gelen bir spike.',
+    settings: 'Ayarlar', stimEyebrow: 'Maymunun gördüğü', method: 'Öğrenme yöntemi', stage: 'Eğitim aşaması',
+    stimulus: 'Uyaran · noktalar sağa gidiyor', layers: 'Katmanlar', view: 'Görünüm', language: 'Dil · Language',
+    legend: 'Gösterim', legMt: 'MT nöronu: rengi tercih ettiği yön', legLeft: 'LIP sol seçim havuzu (E)',
+    legRight: 'LIP sağ seçim havuzu (E)', legNonsel: 'Seçici olmayan E nöronları', legInh: 'Baskılayıcı internöronlar (I)',
+    legDopa: 'Dopamin / uygunluk izi', legGrad: 'Geri yayılan hata (ML)',
+    note: 'Beyin ve bölge konumları şematiktir. Nöron kümeleri büyütülmüş "lupa" görünümüdür; gerçek MT ve LIP milimetreler boyutundadır. Bağlantı parlaklığı = öğrenilmiş sinaps gücü.',
+    lblFix: 'fiksasyon', lblMov: 'hareket · karar penceresi sonda', pause: 'Duraklat', play: 'Oynat',
+    scene: 'Makak beyninin üç boyutlu modeli: MT ve LIP bölgeleri, nöronlar ve bağlantılar',
+    curve: 'Öğrenme eğrisi; bir aşama seçmek için tıkla', scrub: 'Deneme zamanı (ms)',
+    ml: 'ML · surrogate', bio: 'Biyolojik · R-STDP', start: 'başlangıç',
+    untrained: '<b>Eğitilmemiş ağ.</b> MT → LIP bağlantıları rastgele; karar yazı-tura.',
+    trained: (n, a, ch) => `<b>${n}</b> deneme sonra · eğitim doğruluğu <b>%${a}</b><br>Bu denemede seçim: <b>${ch}</b>`,
+    right: 'sağ', left: 'sol', RIGHT: 'SAĞ', LEFT: 'SOL', hard: 'zor', easy: 'kolay', pct: (v) => `%${v}`,
+    layerNames: { brain: 'Beyin', links: 'Bağlantılar', flow: 'Spike akışı', labels: 'Etiketler' },
+    viewNames: { overview: 'Genel', brain: 'Beyin', MT: 'MT', LIP: 'LIP', top: 'Üstten' },
+    capFix: 'fiksasyon · noktaya bak', capMove: (c) => `%${c} tutarlılık · sağa hareket`, capSacc: (side) => `sakkad → ${side} hedef`,
+    decision: (S, ok) => `Göz → <b>${S}</b> ${ok ? '✓ ödül' : '✗ ödül yok'}`,
+    chance: 'şans %50', full: '%100',
+    readout: (t, mr, ml, L, R) => `<span>t = <b>${t} ms</b></span><span>MT sağ/sol tercihli: <b>${mr}</b> / <b>${ml}</b> Hz</span><span>LIP havuzları: <b class="l">sol ${L}</b> · <b class="r">sağ ${R}</b> Hz</span>`,
+    areas: { V1: 'birincil görme', MT: 'hareket yönü', LIP: 'kanıt birikimi', FEF: 'göz hareketi', VTA: 'dopamin kaynağı' },
+    mtCluster: '64 nöron · halka = tercih yönü', lipCluster: '160 uyarıcı + 40 baskılayıcı nöron',
+    leftPool: 'sol havuz', rightPool: 'sağ havuz', toRight: '→ sağ', toLeft: 'sol ←',
+    ph1: ['Fiksasyon', (x) => `Maymun ekranın ortasındaki kırmızı noktaya bakıyor. Henüz hareket yok; MT nöronları kendiliğinden, düşük hızda ateşliyor (<em>~${x} Hz</em>).`],
+    ph2: ['Hareket başladı', (c, lat) => `Noktaların <em>%${c}</em>'i sağa gidiyor, gerisi rastgele. Görüntü retinadan V1'e, oradan MT'ye ulaşıyor; bu yaklaşık <em>${lat} ms</em> sürüyor.`],
+    ph3: ['MT hareketi kodluyor', (mr, ml) => `Sağı tercih eden MT nöronları (halkanın sağ yarısı) <em>${mr} Hz</em>, solu tercih edenler <em>${ml} Hz</em> ateşliyor. Her spike beyaz cevher yolu boyunca LIP'e gidiyor. Parlak yollar güçlü sinapslardır.`,
+      ' Eğitilmemiş ağda yollar henüz yönden bağımsız.'],
+    ph4: ['LIP kanıt biriktiriyor', (R, L) => `Sağ havuz <em>${R} Hz</em>, sol havuz <em>${L} Hz</em>. Yavaş NMDA akımları kanıtı topluyor; ortak baskılayıcı nöronlar (mor) kaybeden havuzu susturuyor. Karar, son 200 ms'de hangi havuzun daha çok ateşlediğine göre verilir.`],
+    ph5head: (side, ok) => `Karar: ${side}, ${ok ? 'doğru' : 'yanlış'}`,
+    ph5bioOk: 'Meyve suyu geldi. VTA\'daki dopamin nöronları "beklenenden iyi" sinyali yayıyor. Bu denemede MT spike\'ından hemen sonra LIP spike\'ı olan sinapslar (altın renkli) <em>uygunluk izi</em> taşıyor ve güçleniyor.',
+    ph5bioBad: 'Ödül yok. Dopamin beklenenin altına düşüyor (negatif tahmin hatası). Bu denemede aktif olan sinapslar zayıflıyor; ağ bir dahaki sefere farklı bir seçim yapmaya itiliyor.',
+    ph5ml: 'ML yöntemi: kayıp hesaplanıyor ve hata sinyali (pembe) zamanda ve bağlantılarda <em>geriye</em> yayılıyor (BPTT). Pembe parlaklık, bu aşamadan bir sonrakine en çok değişecek sinapsları gösterir. Beyin bunu büyük olasılıkla birebir yapamaz.',
+  },
+  en: {
+    title: 'Macaque Brain 3D · Anatomy of a decision', h1: 'Anatomy of a <b>decision</b>',
+    brandP: '264 spiking neurons. Every flash you see is a real spike from the simulation of the trained model.',
+    settings: 'Settings', stimEyebrow: 'What the monkey sees', method: 'Learning rule', stage: 'Training stage',
+    stimulus: 'Stimulus · dots move right', layers: 'Layers', view: 'View', language: 'Language · Dil',
+    legend: 'Legend', legMt: 'MT neuron: color = preferred direction', legLeft: 'LIP left choice pool (E)',
+    legRight: 'LIP right choice pool (E)', legNonsel: 'Non-selective E neurons', legInh: 'Inhibitory interneurons (I)',
+    legDopa: 'Dopamine / eligibility trace', legGrad: 'Backpropagated error (ML)',
+    note: 'Brain and area positions are schematic. Neuron clusters are magnified "loupe" views; the real MT and LIP are millimeters across. Link brightness = learned synaptic strength.',
+    lblFix: 'fixation', lblMov: 'motion · decision window at the end', pause: 'Pause', play: 'Play',
+    scene: '3D model of a macaque brain: areas MT and LIP, neurons and connections',
+    curve: 'Learning curve; click to pick a training stage', scrub: 'Trial time (ms)',
+    ml: 'ML · surrogate gradient', bio: 'Biological · R-STDP', start: 'start',
+    untrained: '<b>Untrained network.</b> MT → LIP links are random; the choice is a coin flip.',
+    trained: (n, a, ch) => `After <b>${n}</b> trials · training accuracy <b>${a}%</b><br>Choice on this trial: <b>${ch}</b>`,
+    right: 'right', left: 'left', RIGHT: 'RIGHT', LEFT: 'LEFT', hard: 'hard', easy: 'easy', pct: (v) => `${v}%`,
+    layerNames: { brain: 'Brain', links: 'Links', flow: 'Spike flow', labels: 'Labels' },
+    viewNames: { overview: 'Overview', brain: 'Brain', MT: 'MT', LIP: 'LIP', top: 'Top' },
+    capFix: 'fixation · look at the dot', capMove: (c) => `${c}% coherence · rightward motion`, capSacc: (side) => `saccade → ${side} target`,
+    decision: (S, ok) => `Eyes → <b>${S}</b> ${ok ? '✓ reward' : '✗ no reward'}`,
+    chance: 'chance 50%', full: '100%',
+    readout: (t, mr, ml, L, R) => `<span>t = <b>${t} ms</b></span><span>MT right/left-preferring: <b>${mr}</b> / <b>${ml}</b> Hz</span><span>LIP pools: <b class="l">left ${L}</b> · <b class="r">right ${R}</b> Hz</span>`,
+    areas: { V1: 'primary visual', MT: 'motion direction', LIP: 'evidence accumulation', FEF: 'eye movements', VTA: 'dopamine source' },
+    mtCluster: '64 neurons · ring = preferred direction', lipCluster: '160 excitatory + 40 inhibitory neurons',
+    leftPool: 'left pool', rightPool: 'right pool', toRight: '→ right', toLeft: 'left ←',
+    ph1: ['Fixation', (x) => `The monkey looks at the red dot in the center. No motion yet; MT neurons fire spontaneously at a low rate (<em>~${x} Hz</em>).`],
+    ph2: ['Motion begins', (c, lat) => `<em>${c}%</em> of the dots move right, the rest move randomly. The image travels from the retina to V1 and on to MT, which takes about <em>${lat} ms</em>.`],
+    ph3: ['MT encodes motion', (mr, ml) => `Right-preferring MT neurons (right half of the ring) fire at <em>${mr} Hz</em>, left-preferring ones at <em>${ml} Hz</em>. Each spike travels along the white-matter pathway to LIP. Bright paths are strong synapses.`,
+      ' In the untrained network the paths are not yet tuned to direction.'],
+    ph4: ['LIP accumulates evidence', (R, L) => `Right pool <em>${R} Hz</em>, left pool <em>${L} Hz</em>. Slow NMDA currents integrate the evidence; shared inhibitory neurons (purple) silence the losing pool. The choice is the pool that fires more in the last 200 ms.`],
+    ph5head: (side, ok) => `Choice: ${side}, ${ok ? 'correct' : 'wrong'}`,
+    ph5bioOk: 'Juice arrives. Dopamine neurons in the VTA broadcast a "better than expected" signal. Synapses where an MT spike was quickly followed by a LIP spike (gold) carry an <em>eligibility trace</em> and get stronger.',
+    ph5bioBad: 'No reward. Dopamine dips below baseline (a negative prediction error). Synapses that were active on this trial weaken, nudging the network toward a different choice next time.',
+    ph5ml: 'ML rule: the loss is computed and the error signal (pink) flows <em>backward</em> through time and through the links (BPTT). Pink brightness marks the synapses that change most before the next stage. The brain most likely cannot do this exactly.',
+  },
+};
+const QL = new URLSearchParams(location.search).get('lang');
+let LANG = I18N[QL] ? QL : ((navigator.language || '').toLowerCase().startsWith('tr') ? 'tr' : 'en');
+const tx = (k) => I18N[LANG][k];
+const relabels = [];   // dile göre yeniden yazılan 3D etiketleri
+
+// ------------------------------------------------------------------ yardımcılar
+const $ = (s) => document.querySelector(s);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const gauss = (x, m, s) => Math.exp(-(((x - m) / s) ** 2));
+function mulberry(seed) {
+  return () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function lowerBound(arr, x) { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < x) lo = m + 1; else hi = m; } return lo; }
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+const META = D.meta;
+const T = META.T, T_FIX = META.t_fix, LAT = META.mt_latency;
+const nMT = META.n_mt, nE = META.n_exc, nI = META.n_inh, P = META.pool_size, nLIP = nE + nI;
+const METHODS = Object.keys(D.methods);
+const COL = {
+  left: new THREE.Color(css('--left')), right: new THREE.Color(css('--right')),
+  nonsel: new THREE.Color('#77746c'), inh: new THREE.Color(css('--inh')),
+  gold: new THREE.Color(css('--gold')), ivory: new THREE.Color(css('--ink')), mt: new THREE.Color(css('--mt')),
+};
+const dirColor = (deg) => new THREE.Color().setHSL((0.06 + deg / 360) % 1, 0.75, 0.6);
+const COS = META.pref_deg.map((d) => Math.cos(d * Math.PI / 180));
+
+// URL parametreleri: ?method=ml&stage=0&coh=0.064&t=450&pause&view=LIP
+const Q = new URLSearchParams(location.search);
+const state = {
+  method: D.methods[Q.get('method')] ? Q.get('method') : (METHODS.includes('bio') ? 'bio' : METHODS[0]),
+  stage: 0, coh: META.coherences[META.coherences.length - 1],
+  t: 0, post: 0, playing: true, speed: 0.12,
+  layers: { brain: true, links: true, flow: true, labels: true },
+};
+state.stage = D.methods[state.method].stages.length - 1;
+if (Q.has('stage')) state.stage = clamp(parseInt(Q.get('stage'), 10) || 0, 0, state.stage);
+if (META.coherences.includes(Q.get('coh'))) state.coh = Q.get('coh');
+const POST_MS = 3000;
+
+// ------------------------------------------------------------------ sahne
+const canvas = $('#scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x04060a, 0.055);
+const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 100);
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.domElement.className = 'labels';
+document.body.appendChild(labelRenderer.domElement);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = 0.07;
+controls.minDistance = 1.2; controls.maxDistance = 12;
+
+// Büyütülmüş nöron kümelerinin merkezleri (beynin sol önünde, bölgelerinin yakınında)
+const C_MT = new THREE.Vector3(-1.9, -0.12, 0.75);
+const C_LIP = new THREE.Vector3(-1.35, 1.08, 0.75);
+const VIEWS = {
+  overview: [new THREE.Vector3(-0.58, 0.55, 7.1), new THREE.Vector3(-0.8, 0.18, 0.3)],
+  brain: [new THREE.Vector3(0.3, 0.25, 3.6), new THREE.Vector3(0, -0.05, 0)],
+  MT: [C_MT.clone().add(new THREE.Vector3(0.5, 0.15, 1.9)), C_MT.clone()],
+  LIP: [C_LIP.clone().add(new THREE.Vector3(0.5, 0.2, 1.9)), C_LIP.clone()],
+  top: [new THREE.Vector3(-0.4, 6.0, 1.4), new THREE.Vector3(-0.4, 0, 0.3)],
+};
+camera.position.copy(VIEWS.overview[0]);
+controls.target.copy(VIEWS.overview[1]);
+let userMoved = false;
+let tween = null;
+controls.addEventListener('start', () => { userMoved = true; });
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  // Dar/dikey ekranda (telefon) sahneyi sığdırmak için kamerayı geri çek
+  if (!userMoved && !tween) {
+    const fit = clamp(1.55 / camera.aspect, 1, 2.8), [p0, q0] = VIEWS.overview;
+    camera.position.copy(q0).addScaledVector(p0.clone().sub(q0), fit);
+    controls.target.copy(q0);
+  }
+  sizeCanvases();
+}
+
+// ------------------------------------------------------------------ beyin geometrisi
+// Koordinatlar: x = ön (+) / arka (-), y = üst (+) / alt (-), z = yan. Ayrıntılı yarıküre +z'de.
+const SULCI = {
+  'Lateral': [[0.55, -0.14], [0.25, -0.04], [-0.05, 0.07], [-0.32, 0.2]],
+  'STS': [[0.5, -0.38], [0.15, -0.27], [-0.2, -0.14], [-0.45, 0.0], [-0.62, 0.14]],
+  'IPS': [[0.02, 0.62], [-0.2, 0.55], [-0.45, 0.5], [-0.7, 0.42]],
+  'Santral': [[0.1, 0.72], [0.17, 0.5], [0.25, 0.28], [0.32, 0.06]],
+  'Arkuat': [[0.52, 0.56], [0.45, 0.4], [0.4, 0.24], [0.47, 0.08], [0.56, -0.04]],
+  'Prensipal': [[0.98, 0.2], [0.8, 0.26], [0.6, 0.28]],
+  'Lunat': [[-0.73, 0.5], [-0.79, 0.3], [-0.83, 0.08], [-0.81, -0.12]],
+};
+function distToPolyline(x, y, pts) {
+  let best = 1e9;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+    const vx = bx - ax, vy = by - ay, wx = x - ax, wy = y - ay;
+    const t = clamp((wx * vx + wy * vy) / (vx * vx + vy * vy), 0, 1);
+    best = Math.min(best, Math.hypot(wx - t * vx, wy - t * vy));
+  }
+  return best;
+}
+function hemisphereGeometry(side) {
+  const geo = new THREE.SphereGeometry(1, 200, 150);
+  const p = geo.attributes.position;
+  const v = new THREE.Vector3();
+  for (let i = 0; i < p.count; i++) {
+    v.fromBufferAttribute(p, i);
+    let X = v.x * 1.25, Y = v.y * 0.8, Z = v.z * 0.6;
+    if (Z * side < 0) Z *= 0.28;                       // iç yüz düzleşir
+    const fa = smooth(0.15, 1.25, X);                   // ön lob incelir ve alçalır
+    Y = Y * (1 - 0.33 * fa) - 0.1 * fa; Z *= 1 - 0.28 * fa;
+    Z *= 1 - 0.15 * smooth(-0.7, -1.25, X);             // oksipital kutup
+    const tl = gauss(X, 0.0, 0.5) * smooth(-0.1, -0.7, Y); // temporal lob aşağı çıkıntı
+    Y -= 0.2 * tl; if (Z * side > 0) Z += side * 0.06 * tl;
+    Z += side * 0.035;
+    // Sulkuslar: yan yüzde oluklar
+    if (Z * side > 0.12) {
+      let depth = 0;
+      for (const pts of Object.values(SULCI)) depth += 0.05 * gauss(distToPolyline(X, Y, pts), 0, 0.028);
+      const dir = new THREE.Vector3(X, Y + 0.05, Z - side * 0.1).normalize();
+      X -= dir.x * depth; Y -= dir.y * depth; Z -= dir.z * depth;
+    }
+    p.setXYZ(i, X, Y, Z);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+const brainUniforms = {
+  uColor: { value: new THREE.Color('#e9dfc8') }, uReveal: { value: -1.4 }, uTime: { value: 0 },
+};
+function brainMaterial(opacity) {
+  return new THREE.ShaderMaterial({
+    uniforms: { ...brainUniforms, uOpacity: { value: opacity } },
+    transparent: true, depthWrite: false,
+    vertexShader: `
+      varying vec3 vN; varying vec3 vW; varying vec3 vV;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vW = wp.xyz; vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - wp.xyz);
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }`,
+    fragmentShader: `
+      uniform vec3 uColor; uniform float uOpacity; uniform float uReveal;
+      varying vec3 vN; varying vec3 vW; varying vec3 vV;
+      void main() {
+        vec3 n = normalize(vN);
+        float fres = pow(1.0 - abs(dot(n, normalize(vV))), 2.4);
+        float lam = clamp(dot(n, normalize(vec3(0.35, 0.85, 0.55))), 0.0, 1.0);
+        float contour = smoothstep(0.86, 1.0, abs(sin(vW.y * 46.0)));      // MRI kesit çizgileri
+        float a = uOpacity * (0.04 + 0.62 * fres + 0.12 * lam) + contour * uOpacity * 0.2 * (0.3 + fres);
+        vec3 col = uColor * (0.3 + 0.7 * lam) + vec3(fres) * 0.2;
+        float shown = smoothstep(uReveal + 0.03, uReveal - 0.03, vW.y);
+        float scan = exp(-pow((vW.y - uReveal) / 0.025, 2.0));
+        gl_FragColor = vec4(col + vec3(0.95, 0.8, 0.5) * scan * 0.8, a * shown + scan * 0.45 * uOpacity);
+      }`,
+  });
+}
+
+const brain = new THREE.Group();
+scene.add(brain);
+const hemi = new THREE.Mesh(hemisphereGeometry(1), brainMaterial(0.72));
+const hemiFar = new THREE.Mesh(hemisphereGeometry(-1), brainMaterial(0.4));
+brain.add(hemiFar, hemi);
+
+const cereGeo = new THREE.SphereGeometry(1, 96, 64);
+cereGeo.scale(0.4, 0.27, 0.6);
+const cerebellum = new THREE.Mesh(cereGeo, brainMaterial(0.55));
+cerebellum.position.set(-0.92, -0.6, 0);
+const stemGeo = new THREE.CylinderGeometry(0.14, 0.09, 0.85, 32, 8);
+const stem = new THREE.Mesh(stemGeo, brainMaterial(0.45));
+stem.position.set(-0.32, -0.92, 0); stem.rotation.z = -0.38;
+brain.add(cerebellum, stem);
+brain.updateMatrixWorld(true);
+
+// Yan yüzeyde (x, y) noktasının 3B karşılığı: +z'den ışın at
+const raycaster = new THREE.Raycaster();
+function surfacePoint(x, y) {
+  raycaster.set(new THREE.Vector3(x, y, 4), new THREE.Vector3(0, 0, -1));
+  const hit = raycaster.intersectObject(hemi, false)[0];
+  if (!hit) return null;
+  const n = hit.face.normal.clone().transformDirection(hemi.matrixWorld);
+  return { p: hit.point.clone(), n };
+}
+
+const sulciGroup = new THREE.Group();
+brain.add(sulciGroup);
+for (const pts of Object.values(SULCI)) {
+  const dense = [];
+  for (let i = 0; i < pts.length - 1; i++) for (let k = 0; k < 8; k++) {
+    const t = k / 8; dense.push([pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t]);
+  }
+  dense.push(pts[pts.length - 1]);
+  const pts3 = dense.map(([x, y]) => surfacePoint(x, y)).filter(Boolean).map((h) => h.p.add(h.n.multiplyScalar(0.004)));
+  if (pts3.length < 2) continue;
+  const tube = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts3), 80, 0.0055, 6);
+  sulciGroup.add(new THREE.Mesh(tube, new THREE.MeshBasicMaterial({ color: 0xe9dfc8, transparent: true, opacity: 0.38, depthWrite: false })));
+}
+
+// ------------------------------------------------------------------ bölgeler
+function glowDisc(color, radius) {
+  return new THREE.Mesh(new THREE.CircleGeometry(radius, 48), new THREE.ShaderMaterial({
+    uniforms: { uColor: { value: new THREE.Color(color) }, uPulse: { value: 0 } },
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+    fragmentShader: `uniform vec3 uColor; uniform float uPulse; varying vec2 vUv;
+      void main(){ float d = length(vUv - 0.5) * 2.0; float a = smoothstep(1.0, 0.0, d) * (0.55 + 0.45 * uPulse);
+        float ring = smoothstep(0.08, 0.0, abs(d - 0.82)) * 0.6; gl_FragColor = vec4(uColor * (1.0 + uPulse), a * 0.55 + ring); }`,
+  }));
+}
+function label(html, cls, pos) {
+  const el = document.createElement('div'); el.className = cls;
+  const o = new CSS2DObject(el); o.position.copy(pos); scene.add(o);
+  if (typeof html === 'function') { relabels.push([o, html]); el.innerHTML = html(); } else el.innerHTML = html;
+  return o;
+}
+const AREAS = {
+  V1: { xy: [-1.1, 0.2], color: '#cfc8b8' },
+  MT: { xy: [-0.5, -0.03], color: css('--mt') },
+  LIP: { xy: [-0.38, 0.47], color: '#f6ead0' },
+  FEF: { xy: [0.43, 0.3], color: '#e88bb4' },
+};
+const areaHits = {};
+const areaDiscs = {};
+for (const [name, a] of Object.entries(AREAS)) {
+  const hit = surfacePoint(...a.xy);
+  if (!hit) continue;
+  areaHits[name] = hit;
+  const disc = glowDisc(a.color, name === 'V1' ? 0.11 : 0.08);
+  disc.position.copy(hit.p).addScaledVector(hit.n, 0.012);
+  disc.lookAt(hit.p.clone().add(hit.n));
+  brain.add(disc); areaDiscs[name] = disc;
+  label(() => `${name}<small>${tx('areas')[name]}</small>`, 'area-label', hit.p.clone().addScaledVector(hit.n, 0.1));
+}
+const VTA = new THREE.Vector3(0.02, -0.5, 0.06);
+const vtaMesh = new THREE.Mesh(new THREE.SphereGeometry(0.045, 24, 16),
+  new THREE.MeshBasicMaterial({ color: COL.gold, transparent: true, opacity: 0.9 }));
+vtaMesh.position.copy(VTA); scene.add(vtaMesh);
+label(() => `VTA<small>${tx('areas').VTA}</small>`, 'area-label', VTA.clone().add(new THREE.Vector3(0.12, -0.08, 0.2)));
+
+// Görsel yollar: V1 -> MT (girdi), LIP -> FEF (çıktı)
+function surfaceArc(a, b, lift) {
+  const pts = [];
+  for (let k = 0; k <= 24; k++) {
+    const t = k / 24, x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
+    const h = surfacePoint(x, y); if (h) pts.push(h.p.addScaledVector(h.n, 0.02 + lift * Math.sin(Math.PI * t)));
+  }
+  return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.006, 6),
+    new THREE.MeshBasicMaterial({ color: 0xe9dfc8, transparent: true, opacity: 0.22, depthWrite: false }));
+}
+brain.add(surfaceArc(AREAS.V1.xy, AREAS.MT.xy, 0.08), surfaceArc(AREAS.LIP.xy, AREAS.FEF.xy, 0.1));
+
+// ------------------------------------------------------------------ büyütülmüş nöron kümeleri
+const viewN = VIEWS.overview[0].clone().sub(VIEWS.overview[1]).normalize();
+const U = new THREE.Vector3(1, 0, 0).addScaledVector(viewN, -viewN.x).normalize();
+const V = new THREE.Vector3().crossVectors(viewN, U).normalize();
+const rand = mulberry(11);
+const gaussRand = () => { let u = 0, v = 0; while (!u) u = rand(); while (!v) v = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+
+const mtPos = [], lipPos = [], lipGroup = [];
+for (let i = 0; i < nMT; i++) {
+  const th = META.pref_deg[i] * Math.PI / 180, r = 0.26;
+  mtPos.push(C_MT.clone().addScaledVector(U, r * Math.cos(th)).addScaledVector(V, r * Math.sin(th)).addScaledVector(viewN, (rand() - 0.5) * 0.06));
+}
+for (let j = 0; j < nLIP; j++) {
+  let c, g;
+  if (j < P) { g = 'left'; c = C_LIP.clone().addScaledVector(U, -0.21); }
+  else if (j < 2 * P) { g = 'right'; c = C_LIP.clone().addScaledVector(U, 0.21); }
+  else if (j < nE) { g = 'nonsel'; c = C_LIP.clone().addScaledVector(viewN, -0.08); }
+  else { g = 'inh'; c = C_LIP.clone(); }
+  const p = c.clone();
+  if (g === 'inh') {
+    const a = rand() * Math.PI * 2, r = 0.32 + rand() * 0.05;
+    p.addScaledVector(U, r * Math.cos(a)).addScaledVector(V, r * Math.sin(a) * 0.62).addScaledVector(viewN, (rand() - 0.5) * 0.08);
+  } else if (g === 'nonsel') {
+    p.addScaledVector(U, gaussRand() * 0.05).addScaledVector(V, gaussRand() * 0.09).addScaledVector(viewN, gaussRand() * 0.035);
+  } else {
+    p.addScaledVector(U, gaussRand() * 0.052).addScaledVector(V, gaussRand() * 0.064).addScaledVector(viewN, gaussRand() * 0.05);
+  }
+  lipPos.push(p); lipGroup.push(g);
+}
+const allPos = [...mtPos, ...lipPos];
+const baseColor = [
+  ...META.pref_deg.map(dirColor),
+  ...lipGroup.map((g) => COL[g].clone()),
+];
+const nN = allPos.length;
+
+const sphere = new THREE.SphereGeometry(0.014, 16, 12);
+const neurons = new THREE.InstancedMesh(sphere, new THREE.MeshBasicMaterial({ toneMapped: false }), nN);
+const dummy = new THREE.Object3D();
+const flash = new Float32Array(nN);
+function setNeuron(i, s) {
+  dummy.position.copy(allPos[i]);
+  const small = i >= nMT + nE ? 0.72 : 1.0;
+  dummy.scale.setScalar(small * (1 + 0.9 * s));
+  dummy.updateMatrix(); neurons.setMatrixAt(i, dummy.matrix);
+}
+for (let i = 0; i < nN; i++) { setNeuron(i, 0); neurons.setColorAt(i, baseColor[i]); }
+scene.add(neurons);
+
+// Hale (kalsiyum görüntüleme parlaması)
+const haloGeo = new THREE.BufferGeometry();
+haloGeo.setAttribute('position', new THREE.Float32BufferAttribute(allPos.flatMap((p) => [p.x, p.y, p.z]), 3));
+haloGeo.setAttribute('aColor', new THREE.Float32BufferAttribute(baseColor.flatMap((c) => [c.r, c.g, c.b]), 3));
+haloGeo.setAttribute('aSize', new THREE.Float32BufferAttribute(new Float32Array(nN), 1));
+const pointUniforms = { uPx: { value: 380 * renderer.getPixelRatio() } };
+const pointVS = `attribute float aSize; attribute vec3 aColor; uniform float uPx; varying vec3 vC; varying float vS;
+  void main(){ vC = aColor; vS = aSize; vec4 mv = modelViewMatrix * vec4(position,1.0);
+    gl_PointSize = aSize * uPx / -mv.z; gl_Position = projectionMatrix * mv; }`;
+const pointFS = `varying vec3 vC; varying float vS;
+  void main(){ float d = length(gl_PointCoord - 0.5) * 2.0; if (d > 1.0) discard;
+    float a = pow(1.0 - d, 2.2); gl_FragColor = vec4(mix(vC, vec3(1.0), 0.35 * a) * 1.4, a * min(vS * 3.0, 1.0)); }`;
+const halos = new THREE.Points(haloGeo, new THREE.ShaderMaterial({
+  uniforms: pointUniforms, vertexShader: pointVS, fragmentShader: pointFS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+}));
+scene.add(halos);
+
+// Lupa konileri: bölgeden kümeye
+function magnifier(from, center, radius) {
+  const pts = [];
+  for (let k = 0; k < 28; k++) {
+    const a = (k / 28) * Math.PI * 2;
+    const q = center.clone().addScaledVector(U, radius * Math.cos(a)).addScaledVector(V, radius * Math.sin(a) * 0.8);
+    pts.push(from, q);
+    const a2 = ((k + 1) / 28) * Math.PI * 2;
+    pts.push(q, center.clone().addScaledVector(U, radius * Math.cos(a2)).addScaledVector(V, radius * Math.sin(a2) * 0.8));
+  }
+  return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({ color: 0xe9dfc8, transparent: true, opacity: 0.07, depthWrite: false }));
+}
+if (areaHits.MT) scene.add(magnifier(areaHits.MT.p, C_MT, 0.36));
+if (areaHits.LIP) scene.add(magnifier(areaHits.LIP.p, C_LIP, 0.43));
+
+label(() => `MT<small>${tx('mtCluster')}</small>`, 'cluster-label',
+  C_MT.clone().addScaledVector(U, 0.48).addScaledVector(V, -0.42));
+label(() => `LIP<small>${tx('lipCluster')}</small>`, 'cluster-label',
+  C_LIP.clone().addScaledVector(V, 0.42));
+label(() => `<span style="color:var(--left)">${tx('leftPool')}</span>`, 'pool-label', C_LIP.clone().addScaledVector(U, -0.21).addScaledVector(V, -0.25));
+label(() => `<span style="color:var(--right)">${tx('rightPool')}</span>`, 'pool-label', C_LIP.clone().addScaledVector(U, 0.21).addScaledVector(V, -0.25));
+label(() => tx('toRight'), 'pool-label', C_MT.clone().addScaledVector(U, 0.38));
+label(() => tx('toLeft'), 'pool-label', C_MT.clone().addScaledVector(U, -0.38));
+const decisionLabel = label('', 'decision', C_LIP.clone().addScaledVector(U, 0.95).addScaledVector(V, 0.05));
+
+// ------------------------------------------------------------------ MT -> LIP bağlantıları
+const SEG = 14;
+let conn = null;      // { src, dst, n, ctrl, geo, ... }
+const linkUniforms = {
+  uMix: { value: 1 }, uWmax: { value: 1 }, uOpacity: { value: 1 },
+  uElig: { value: 0 }, uGrad: { value: 0 }, uGradPos: { value: 1 }, uDopa: { value: new THREE.Color(css('--gold')) },
+  uGradCol: { value: new THREE.Color(css('--grad')) },
+};
+const linkMat = new THREE.ShaderMaterial({
+  uniforms: linkUniforms, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: `
+    attribute float aT; attribute float aW0; attribute float aW1; attribute float aElig; attribute float aDw;
+    attribute vec3 color;
+    uniform float uMix, uWmax, uOpacity, uElig, uGrad, uGradPos; uniform vec3 uDopa, uGradCol;
+    varying vec3 vC; varying float vA;
+    void main() {
+      float w = clamp(mix(aW0, aW1, uMix) / uWmax, 0.0, 1.2);
+      float s = pow(w, 1.8);
+      vec3 c = color * (0.08 + 1.15 * s);
+      float a = uOpacity * (0.03 + 0.5 * s);
+      float e = uElig * aElig;
+      c += uDopa * e * 1.6; a += e * 0.7;
+      float f = exp(-pow((aT - uGradPos) / 0.07, 2.0)) * uGrad * (0.2 + 1.4 * aDw);
+      c += uGradCol * f * 1.6; a += f * 0.6;
+      vC = c; vA = a;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: 'varying vec3 vC; varying float vA; void main(){ gl_FragColor = vec4(vC, vA); }',
+});
+const links = new THREE.LineSegments(new THREE.BufferGeometry(), linkMat);
+scene.add(links);
+const tractMid = C_MT.clone().add(C_LIP).multiplyScalar(0.5).add(new THREE.Vector3(-0.45, 0, 0.15));
+
+function bezier(ctrl, c, t, out) {
+  const o = c * 12, u = 1 - t, b0 = u * u * u, b1 = 3 * u * u * t, b2 = 3 * u * t * t, b3 = t * t * t;
+  out.set(
+    b0 * ctrl[o] + b1 * ctrl[o + 3] + b2 * ctrl[o + 6] + b3 * ctrl[o + 9],
+    b0 * ctrl[o + 1] + b1 * ctrl[o + 4] + b2 * ctrl[o + 7] + b3 * ctrl[o + 10],
+    b0 * ctrl[o + 2] + b1 * ctrl[o + 5] + b2 * ctrl[o + 8] + b3 * ctrl[o + 11]);
+  return out;
+}
+
+const LINKS_PER_NEURON = 8;   // her havuz nöronunun 32 girdisinden çizilen temsili alt küme
+function buildConnections(method) {
+  const M = D.methods[method];
+  // 2560 çizginin hepsi okunmaz bir yumak olur; her havuz nöronu için 8 girdi seç
+  const r0 = mulberry(9), byDst = new Map();
+  M.connections.dst.forEach((d, k) => { if (!byDst.has(d)) byDst.set(d, []); byDst.get(d).push(k); });
+  const keep = [];
+  for (const ks of byDst.values()) {
+    for (let i = ks.length - 1; i > 0; i--) { const j = Math.floor(r0() * (i + 1)); [ks[i], ks[j]] = [ks[j], ks[i]]; }
+    keep.push(...ks.slice(0, LINKS_PER_NEURON));
+  }
+  const src = keep.map((k) => M.connections.src[k]), dst = keep.map((k) => M.connections.dst[k]), n = keep.length;
+  const r = mulberry(5);
+  const ctrl = new Float32Array(n * 12);
+  for (let c = 0; c < n; c++) {
+    const p0 = mtPos[src[c]], p3 = lipPos[dst[c]];
+    const jit = new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).multiplyScalar(0.12);
+    const p1 = p0.clone().lerp(tractMid, 0.6).add(jit), p2 = p3.clone().lerp(tractMid, 0.6).add(jit);
+    [p0, p1, p2, p3].forEach((p, k) => { ctrl[c * 12 + k * 3] = p.x; ctrl[c * 12 + k * 3 + 1] = p.y; ctrl[c * 12 + k * 3 + 2] = p.z; });
+  }
+  const nv = n * SEG * 2;
+  const pos = new Float32Array(nv * 3), col = new Float32Array(nv * 3), aT = new Float32Array(nv);
+  const tmp = new THREE.Vector3(), cc = new THREE.Color();
+  let k = 0;
+  for (let c = 0; c < n; c++) {
+    const cs = dirColor(META.pref_deg[src[c]]), cd = COL[lipGroup[dst[c]]];
+    for (let s = 0; s < SEG; s++) for (const t of [s / SEG, (s + 1) / SEG]) {
+      bezier(ctrl, c, t, tmp); pos.set([tmp.x, tmp.y, tmp.z], k * 3);
+      cc.copy(cs).lerp(cd, smooth(0.25, 0.95, t)); col.set([cc.r, cc.g, cc.b], k * 3); aT[k] = t; k++;
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('aT', new THREE.BufferAttribute(aT, 1));
+  for (const a of ['aW0', 'aW1', 'aElig', 'aDw']) geo.setAttribute(a, new THREE.BufferAttribute(new Float32Array(nv), 1));
+  links.geometry.dispose(); links.geometry = geo;
+  // Her MT nöronunun giden bağlantıları
+  const outgoing = Array.from({ length: nMT }, () => []);
+  for (let c = 0; c < n; c++) outgoing[src[c]].push(c);
+  conn = { method, src, dst, n, ctrl, geo, outgoing, keep, shown: null };
+  // Ağırlık ölçeği: yöntemin tüm aşamalarındaki 97. yüzdelik
+  const all = M.stages.flatMap((_, i) => stageWeights(i)).sort((a, b) => a - b);
+  linkUniforms.uWmax.value = all[Math.floor(all.length * 0.97)] || 1;
+}
+function perConnection(attr, values) {
+  const a = conn.geo.getAttribute(attr);
+  for (let c = 0; c < conn.n; c++) a.array.fill(values[c], c * SEG * 2, (c + 1) * SEG * 2);
+  a.needsUpdate = true;
+}
+
+// ------------------------------------------------------------------ partiküller (spike'lar, dopamin)
+const CAP = 5000;
+const pGeo = new THREE.BufferGeometry();
+const pPos = new Float32Array(CAP * 3), pCol = new Float32Array(CAP * 3), pSize = new Float32Array(CAP);
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+pGeo.setAttribute('aColor', new THREE.BufferAttribute(pCol, 3));
+pGeo.setAttribute('aSize', new THREE.BufferAttribute(pSize, 1));
+const particles = new THREE.Points(pGeo, new THREE.ShaderMaterial({
+  uniforms: pointUniforms, vertexShader: pointVS, fragmentShader: pointFS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+}));
+particles.frustumCulled = false;
+scene.add(particles);
+let active = [];
+const free = Array.from({ length: CAP }, (_, i) => CAP - 1 - i);
+function spawn(p) { if (!free.length) return; p.slot = free.pop(); active.push(p); }
+function clearParticles() { for (const p of active) { pSize[p.slot] = 0; free.push(p.slot); } active = []; }
+const dopaCtrl = new Float32Array(12 * 24);
+{
+  const r = mulberry(3);
+  for (let k = 0; k < 24; k++) {
+    const end = C_LIP.clone().addScaledVector(U, (r() - 0.5) * 0.8).addScaledVector(V, (r() - 0.5) * 0.4);
+    const pts = [VTA, new THREE.Vector3(-0.1 + (r() - 0.5) * 0.3, 0.1, 0.4 + r() * 0.3),
+      new THREE.Vector3(-0.35 + (r() - 0.5) * 0.3, 0.85, 0.9), end];
+    pts.forEach((p, j) => dopaCtrl.set([p.x, p.y, p.z], k * 12 + j * 3));
+  }
+}
+
+// ------------------------------------------------------------------ veri: yöntem / aşama / deneme
+let sim = null;           // geçerli LIP denemesi
+let mtSpikes = null;      // geçerli MT spike listeleri
+let cumW = null;          // MT nöronu başına ağırlıklı seçim için kümülatif dağılım
+const ptr = new Int32Array(nN);
+const lastSpike = new Float32Array(nN).fill(-1e9);
+
+function stageWeights(i) { const w = D.methods[conn.method].stages[i].weights; return conn.keep.map((k) => w[k]); }
+
+function eligibility(s) {
+  // Basit STDP benzeri iz: her sonraki spike'tan önceki 20 ms içindeki önceki spike'lar
+  const e = new Float32Array(conn.n);
+  for (let c = 0; c < conn.n; c++) {
+    const pre = mtSpikes[conn.src[c]], post = s.lip[conn.dst[c]];
+    let sum = 0, a = 0;
+    for (const tp of post) {
+      while (a < pre.length && pre[a] <= tp - 20) a++;
+      for (let b = a; b < pre.length && pre[b] <= tp; b++) sum += Math.exp(-(tp - pre[b]) / 20);
+    }
+    e[c] = sum;
+  }
+  let mx = 0; for (const v of e) mx = Math.max(mx, v);
+  return e.map((v) => (mx ? v / mx : 0));
+}
+
+function applyStage(animate) {
+  const M = D.methods[state.method];
+  const w1 = stageWeights(state.stage);
+  const w0 = conn.shown ?? w1;
+  perConnection('aW0', w0); perConnection('aW1', w1);
+  linkUniforms.uMix.value = animate ? 0 : 1;
+  conn.shown = w1;
+  const nxt = stageWeights(Math.min(state.stage + 1, M.stages.length - 1));
+  const prv = stageWeights(Math.max(state.stage - 1, 0));
+  const ref = state.stage < M.stages.length - 1 ? nxt : prv;
+  const dw = w1.map((w, c) => Math.abs(ref[c] - w));
+  let mx = 0; for (const v of dw) mx = Math.max(mx, v);
+  perConnection('aDw', dw.map((v) => (mx ? v / mx : 0)));
+  loadTrial();
+  renderStageUI();
+}
+function loadTrial() {
+  mtSpikes = META.mt[state.coh];
+  sim = D.methods[state.method].stages[state.stage].sims[state.coh];
+  perConnection('aElig', eligibility(sim));
+  const w = conn.shown;
+  cumW = conn.outgoing.map((cs) => { let acc = 0; return cs.map((c) => (acc += w[c] ** 2)); });
+  seek(state.t);
+}
+function spikeList(i) { return i < nMT ? mtSpikes[i] : sim.lip[i - nMT]; }
+function seek(t) {
+  state.t = t;
+  for (let i = 0; i < nN; i++) {
+    const L = spikeList(i); ptr[i] = lowerBound(L, t + 1e-6);
+    lastSpike[i] = ptr[i] > 0 ? L[ptr[i] - 1] : -1e9;
+  }
+  clearParticles();
+  // Zamanda atlayınca (kaydırma, URL) o an yolda olan spike'ları da yeniden oluştur
+  if (state.layers.flow && t < T) for (let i = 0; i < nMT; i++) {
+    const L = mtSpikes[i];
+    for (let k = lowerBound(L, t - 40); k < L.length && L[k] <= t; k++) spawnSpike(i, L[k]);
+  }
+}
+
+// ------------------------------------------------------------------ zaman
+function restartTrial() { state.post = 0; seek(0); decisionLabel.element.classList.remove('on'); dopaWave.visible = false; }
+function advance(dtReal) {
+  if (state.t < T) {
+    const prev = state.t;
+    state.t = Math.min(T, state.t + dtReal * state.speed);
+    for (let i = 0; i < nN; i++) {
+      const L = spikeList(i);
+      while (ptr[i] < L.length && L[ptr[i]] <= state.t) {
+        const ts = L[ptr[i]]; lastSpike[i] = ts; ptr[i]++;
+        if (i < nMT && state.layers.flow && ts > prev - 1) spawnSpike(i, ts);
+      }
+    }
+    if (state.t >= T) onTrialEnd();
+  } else {
+    state.post += dtReal;
+    if (state.post > POST_MS) restartTrial();
+  }
+}
+function spawnSpike(i, ts) {
+  const cum = cumW[i], cs = conn.outgoing[i];
+  if (!cs.length || !cum[cum.length - 1]) return;
+  for (let k = 0; k < 2; k++) {
+    const x = Math.random() * cum[cum.length - 1];
+    const c = cs[lowerBound(cum, x)];
+    spawn({ kind: 'spike', c, t0: ts, dur: 40, col: dirColor(META.pref_deg[i]) });
+  }
+}
+function onTrialEnd() {
+  clearParticles();   // yoldaki spike'lar karar anında donup kalmasın
+  const right = sim.choice === 1;
+  decisionLabel.element.innerHTML = tx('decision')(right ? tx('RIGHT') : tx('LEFT'), sim.correct);
+  decisionLabel.element.style.color = right ? css('--right') : css('--left');
+  decisionLabel.element.classList.add('on');
+  if (state.method === 'bio') {
+    for (let k = 0; k < 140; k++) spawn({ kind: 'dopa', c: k % 24, t0: performance.now() + 300 + k * 6, dur: 900, real: true, col: COL.gold });
+    dopaWave.visible = true;
+  }
+}
+
+// ------------------------------------------------------------------ dopamin dalgası
+const dopaWave = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.ShaderMaterial({
+  uniforms: { uA: { value: 0 }, uColor: { value: COL.gold } },
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  vertexShader: 'varying vec3 vN; varying vec3 vV; void main(){ vec4 wp = modelMatrix*vec4(position,1.0); vN = normalize(mat3(modelMatrix)*normal); vV = normalize(cameraPosition - wp.xyz); gl_Position = projectionMatrix*viewMatrix*wp; }',
+  fragmentShader: 'uniform float uA; uniform vec3 uColor; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 3.0); gl_FragColor = vec4(uColor, f * uA); }',
+}));
+dopaWave.position.copy(VTA); dopaWave.visible = false; scene.add(dopaWave);
+
+// ------------------------------------------------------------------ kare güncellemeleri
+const tmpV = new THREE.Vector3();
+const white = new THREE.Color(1, 1, 1), cTmp = new THREE.Color();
+function updateNeurons() {
+  const haloSize = haloGeo.getAttribute('aSize');
+  const decided = state.t >= T;
+  const pulse = decided ? 0.5 + 0.5 * Math.sin(performance.now() / 160) : 0;
+  for (let i = 0; i < nN; i++) {
+    const age = state.t - lastSpike[i];
+    let f = age >= 0 ? Math.exp(-age / 9) : 0;
+    if (decided && i >= nMT) {
+      const g = lipGroup[i - nMT];
+      if ((g === 'right' && sim.choice === 1) || (g === 'left' && sim.choice === 0)) f = Math.max(f, 0.35 + 0.35 * pulse);
+    }
+    flash[i] = f;
+    setNeuron(i, f);
+    cTmp.copy(baseColor[i]).multiplyScalar(0.32 + 1.2 * f).lerp(white, 0.45 * f);
+    neurons.setColorAt(i, cTmp);
+    haloSize.array[i] = 0.04 + 0.22 * f;
+  }
+  neurons.instanceMatrix.needsUpdate = true; neurons.instanceColor.needsUpdate = true; haloSize.needsUpdate = true;
+}
+function updateParticles(now) {
+  const keep = [];
+  for (const p of active) {
+    const tt = p.real ? now : state.t;
+    const k = (tt - p.t0) / p.dur;
+    if (k > 1) { pSize[p.slot] = 0; free.push(p.slot); continue; }
+    if (k < 0) { pSize[p.slot] = 0; keep.push(p); continue; }
+    const ctrl = p.kind === 'dopa' ? dopaCtrl : conn.ctrl;
+    bezier(ctrl, p.c, k, tmpV);
+    pPos.set([tmpV.x, tmpV.y, tmpV.z], p.slot * 3);
+    pCol.set([p.col.r, p.col.g, p.col.b], p.slot * 3);
+    pSize[p.slot] = (p.kind === 'dopa' ? 0.09 : 0.065) * Math.sin(Math.PI * Math.min(1, k * 1.15));
+    keep.push(p);
+  }
+  active = keep;
+  for (const a of ['position', 'aColor', 'aSize']) pGeo.getAttribute(a).needsUpdate = true;
+}
+function updateEffects(dtReal) {
+  const m = linkUniforms.uMix; if (m.value < 1) m.value = Math.min(1, m.value + dtReal / 1100);
+  const post = state.t >= T ? state.post : -1;
+  if (state.method === 'bio' && post >= 0) {
+    const k = post / 1500;
+    dopaWave.scale.setScalar(0.05 + 2.4 * smooth(0, 1, k));
+    dopaWave.material.uniforms.uA.value = (1 - smooth(0.4, 1, k)) * 0.9;
+    linkUniforms.uElig.value = smooth(400, 1100, post) * (1 - smooth(2200, 2900, post)) * (sim.correct ? 1 : 0.35);
+    linkUniforms.uGrad.value = 0;
+  } else if (state.method === 'ml' && post >= 0) {
+    linkUniforms.uGrad.value = smooth(200, 500, post) * (1 - smooth(2100, 2700, post));
+    linkUniforms.uGradPos.value = 1.15 - 1.3 * smooth(300, 2100, post);
+    linkUniforms.uElig.value = 0;
+  } else {
+    linkUniforms.uElig.value = 0; linkUniforms.uGrad.value = 0;
+  }
+  const fef = areaDiscs.FEF; if (fef) fef.material.uniforms.uPulse.value = post >= 0 ? Math.max(0, 1 - post / 900) : 0;
+  const mtD = areaDiscs.MT; if (mtD) mtD.material.uniforms.uPulse.value = state.t > T_FIX + LAT && state.t < T ? 0.6 : 0;
+  const lipD = areaDiscs.LIP; if (lipD) lipD.material.uniforms.uPulse.value = clamp((state.t - 250) / 450, 0, 1) * (state.t < T ? 1 : 0.5);
+  if (brainUniforms.uReveal.value < 1.3) brainUniforms.uReveal.value += dtReal / 1500;
+}
+
+// ------------------------------------------------------------------ 2B paneller
+function sizeCanvases() {
+  const dpr = Math.min(window.devicePixelRatio, 2);
+  const rc = $('#rates'); rc.width = rc.clientWidth * dpr; rc.height = rc.clientHeight * dpr;
+  const track = $('#track'), w = track.clientWidth;
+  $('#segFix').style.cssText = `left:0;width:${(T_FIX / T) * w - 3}px`;
+  $('#segMov').style.cssText = `left:${(T_FIX / T) * w}px;right:0`;
+  $('#lblFix').style.left = '0px';
+  $('#lblMov').style.left = `${(T_FIX / T) * w}px`;
+  $('#scrub').max = T;
+}
+function mtRates(t) {
+  let r = 0, l = 0, nr = 0, nl = 0;
+  for (let i = 0; i < nMT; i++) {
+    const L = mtSpikes[i], cnt = lowerBound(L, t + 1e-6) - lowerBound(L, t - 50);
+    if (COS[i] > 0.5) { r += cnt; nr++; } else if (COS[i] < -0.5) { l += cnt; nl++; }
+  }
+  return [(r / nr) * 20, (l / nl) * 20];
+}
+function poolRate(side, t) {
+  const arr = sim.rates[side], k = clamp(Math.round(t / META.rate_step_ms), 0, arr.length - 1);
+  return arr[k];
+}
+function drawRates() {
+  const c = $('#rates'), g = c.getContext('2d'), W = c.width, H = c.height;
+  const dpr = W / c.clientWidth;
+  g.clearRect(0, 0, W, H);
+  const R = sim.rates, step = META.rate_step_ms;
+  const ymax = Math.max(20, ...R.left, ...R.right) * 1.1;
+  const x = (t) => (t / T) * W, y = (v) => H - 4 * dpr - (v / ymax) * (H - 12 * dpr);
+  g.fillStyle = 'rgba(236,230,216,0.05)'; g.fillRect(0, 0, x(T_FIX), H);
+  g.strokeStyle = 'rgba(236,230,216,0.10)'; g.lineWidth = 1 * dpr;
+  for (const v of [20, 40, 60, 80]) if (v < ymax) { g.beginPath(); g.moveTo(0, y(v)); g.lineTo(W, y(v)); g.stroke(); }
+  g.fillStyle = 'rgba(236,230,216,0.45)'; g.font = `${10 * dpr}px "IBM Plex Mono"`;
+  for (const v of [20, 40, 60, 80]) if (v < ymax) g.fillText(`${v} Hz`, 4 * dpr, y(v) - 3 * dpr);
+  for (const [side, color] of [['left', css('--left')], ['right', css('--right')]]) {
+    const arr = R[side];
+    for (const [alpha, upto] of [[0.22, T], [1, state.t]]) {
+      g.beginPath(); g.strokeStyle = color; g.globalAlpha = alpha; g.lineWidth = (alpha < 1 ? 1.2 : 2) * dpr;
+      for (let k = 0; k < arr.length && k * step <= upto; k++) { const px = x(k * step), py = y(arr[k]); k ? g.lineTo(px, py) : g.moveTo(px, py); }
+      g.stroke();
+    }
+  }
+  g.globalAlpha = 1;
+  $('#playhead').style.left = `${(state.t / T) * $('#track').clientWidth}px`;
+  $('#scrub').value = Math.round(state.t);
+}
+
+// Rastgele nokta uyaranı
+const dotsCanvas = $('#dots'), dg = dotsCanvas.getContext('2d');
+const DW = dotsCanvas.width, DH = dotsCanvas.height, AR = 98, CX = DW / 2, CY = DH / 2;
+const dots = Array.from({ length: 140 }, () => randInAperture());
+function randInAperture() { const a = Math.random() * Math.PI * 2, r = AR * Math.sqrt(Math.random()); return [CX + r * Math.cos(a), CY + r * Math.sin(a)]; }
+let lastFrame = -1;
+function drawDots() {
+  const c = parseFloat(state.coh);
+  const frame = Math.floor(state.t / META.frame_ms);
+  const moving = state.t >= T_FIX && state.t < T;
+  if (frame !== lastFrame && moving) {
+    for (const d of dots) {
+      if (Math.random() < c) { d[0] += 7; if (Math.hypot(d[0] - CX, d[1] - CY) > AR) { const y = CY + (Math.random() * 2 - 1) * AR * 0.9; d[0] = CX - Math.sqrt(Math.max(0, AR * AR - (y - CY) ** 2)); d[1] = y; } }
+      else { const p = randInAperture(); d[0] = p[0]; d[1] = p[1]; }
+    }
+  }
+  lastFrame = frame;
+  dg.clearRect(0, 0, DW, DH);
+  dg.strokeStyle = 'rgba(236,230,216,0.12)'; dg.lineWidth = 2;
+  dg.beginPath(); dg.arc(CX, CY, AR + 6, 0, Math.PI * 2); dg.stroke();
+  if (state.t >= T_FIX) {
+    dg.fillStyle = 'rgba(236,230,216,0.9)';
+    for (const [px, py] of dots) { dg.beginPath(); dg.arc(px, py, 2.6, 0, Math.PI * 2); dg.fill(); }
+  }
+  const targetX = AR + 50;
+  for (const side of [-1, 1]) {
+    const chosen = state.t >= T && ((side > 0) === (sim.choice === 1));
+    dg.fillStyle = chosen ? (side > 0 ? css('--right') : css('--left')) : 'rgba(236,230,216,0.25)';
+    dg.beginPath(); dg.arc(CX + side * targetX, CY, chosen ? 9 : 6, 0, Math.PI * 2); dg.fill();
+  }
+  if (state.t >= T) {
+    const side = sim.choice === 1 ? 1 : -1, k = smooth(0, 350, state.post);
+    dg.strokeStyle = side > 0 ? css('--right') : css('--left'); dg.lineWidth = 3;
+    dg.beginPath(); dg.moveTo(CX, CY); dg.lineTo(CX + side * targetX * k, CY); dg.stroke();
+  }
+  dg.fillStyle = '#ff5a4f'; dg.beginPath(); dg.arc(CX, CY, 5, 0, Math.PI * 2); dg.fill();
+  $('#stimCap').textContent = state.t < T_FIX ? tx('capFix')
+    : state.t < T ? tx('capMove')((c * 100).toFixed(1)) : tx('capSacc')(sim.choice === 1 ? tx('right') : tx('left'));
+}
+
+// Öğrenme eğrisi (panel)
+function drawCurve() {
+  const c = $('#curve'), g = c.getContext('2d'), W = c.width, H = c.height;
+  const M = D.methods[state.method], h = M.history;
+  const tmax = Math.max(...h.trials, ...M.stages.map((s) => s.trials)) || 1;
+  const pad = 12, x = (t) => pad + (t / tmax) * (W - 2 * pad), y = (a) => H - pad - ((a - 0.4) / 0.6) * (H - 2 * pad);
+  g.clearRect(0, 0, W, H);
+  g.strokeStyle = 'rgba(236,230,216,0.12)'; g.lineWidth = 2; g.beginPath(); g.moveTo(pad, y(0.5)); g.lineTo(W - pad, y(0.5)); g.stroke();
+  g.fillStyle = 'rgba(236,230,216,0.4)'; g.font = '20px "IBM Plex Mono"'; g.fillText(tx('chance'), pad + 4, y(0.5) - 6); g.fillText(tx('full'), pad + 4, y(1.0) + 18);
+  g.strokeStyle = css('--gold'); g.lineWidth = 3; g.beginPath();
+  h.trials.forEach((t, k) => { const px = x(t), py = y(h.accuracy[k]); k ? g.lineTo(px, py) : g.moveTo(px, py); });
+  g.stroke();
+  M.stages.forEach((s, k) => {
+    const a = s.accuracy ?? 0.5, sel = k === state.stage;
+    g.beginPath(); g.arc(x(s.trials), y(a), sel ? 9 : 6, 0, Math.PI * 2);
+    g.fillStyle = sel ? css('--ink') : '#0b0d12'; g.fill();
+    g.strokeStyle = css('--ink'); g.lineWidth = 3; g.stroke();
+  });
+  curveHit = M.stages.map((s) => [x(s.trials) / W, y(s.accuracy ?? 0.5) / H]);
+}
+let curveHit = [];
+$('#curve').addEventListener('click', (e) => {
+  const r = e.currentTarget.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+  let best = 0, bd = 1e9; curveHit.forEach(([hx, hy], k) => { const d = Math.hypot(hx - px, (hy - py) * 0.4); if (d < bd) { bd = d; best = k; } });
+  setStage(best);
+});
+
+// ------------------------------------------------------------------ anlatı
+const PHASES = 5;
+function narrative() {
+  const t = state.t, c = (parseFloat(state.coh) * 100).toFixed(1);
+  const [mr, ml] = mtRates(t);
+  const L = poolRate('left', t), R = poolRate('right', t);
+  const untrained = D.methods[state.method].stages[state.stage].iter === 0;
+  if (t < T_FIX) { const [h, b] = tx('ph1'); return [1, h, b(Math.round((mr + ml) / 2))]; }
+  if (t < T_FIX + LAT) { const [h, b] = tx('ph2'); return [2, h, b(c, LAT)]; }
+  if (t < T_FIX + 260) { const [h, b, u] = tx('ph3'); return [3, h, b(mr.toFixed(0), ml.toFixed(0)) + (untrained ? u : '')]; }
+  if (t < T) { const [h, b] = tx('ph4'); return [4, h, b(R.toFixed(0), L.toFixed(0))]; }
+  const head = tx('ph5head')(sim.choice === 1 ? tx('right') : tx('left'), sim.correct);
+  if (state.method === 'bio') return [5, head, sim.correct ? tx('ph5bioOk') : tx('ph5bioBad')];
+  return [5, head, tx('ph5ml')];
+}
+let lastPhaseKey = '';
+function updateNarrative() {
+  const [n, title, body] = narrative();
+  const key = `${n}|${title}`;
+  if (key !== lastPhaseKey) { $('#phaseNo').textContent = `0${n} / 0${PHASES}`; $('#phaseTitle').textContent = title; lastPhaseKey = key; }
+  $('#phaseBody').innerHTML = body;
+  const [mr, ml] = mtRates(state.t);
+  $('#readout').innerHTML = tx('readout')(Math.round(state.t), mr.toFixed(0), ml.toFixed(0),
+    poolRate('left', state.t).toFixed(0), poolRate('right', state.t).toFixed(0));
+}
+
+// ------------------------------------------------------------------ arayüz
+function seg(el, items, current, onPick) {
+  el.innerHTML = '';
+  for (const [key, text] of items) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = text;
+    b.setAttribute('aria-pressed', String(key === current)); b.onclick = () => onPick(key);
+    el.appendChild(b);
+  }
+}
+function renderMethodUI() { seg($('#methodSeg'), METHODS.map((m) => [m, tx(m)]), state.method, setMethod); }
+function renderStageUI() {
+  const M = D.methods[state.method];
+  seg($('#stageSeg'), M.stages.map((s, k) => [k, k === 0 ? tx('start') : `${s.trials}`]), state.stage, setStage);
+  const s = M.stages[state.stage];
+  $('#stageInfo').innerHTML = s.iter === 0 ? tx('untrained')
+    : tx('trained')(s.trials, (s.accuracy * 100).toFixed(0), sim ? (sim.choice === 1 ? tx('right') : tx('left')) : '-');
+  drawCurve();
+}
+function renderCohUI() { seg($('#cohSeg'), META.coherences.map((c) => [c, `${tx('pct')((parseFloat(c) * 100).toFixed(1))} ${parseFloat(c) < 0.2 ? tx('hard') : tx('easy')}`]), state.coh, (c) => { state.coh = c; renderCohUI(); loadTrial(); restartTrial(); renderStageUI(); }); }
+function renderLayerUI() {
+  const names = tx('layerNames');
+  const el = $('#layerSeg'); el.innerHTML = '';
+  for (const [k, text] of Object.entries(names)) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.setAttribute('aria-pressed', String(state.layers[k]));
+    b.onclick = () => { state.layers[k] = !state.layers[k]; applyLayers(); renderLayerUI(); };
+    el.appendChild(b);
+  }
+}
+function applyLayers() {
+  brain.visible = state.layers.brain;
+  links.visible = state.layers.links;
+  particles.visible = state.layers.flow;
+  labelRenderer.domElement.classList.toggle('hidden-labels', !state.layers.labels);
+}
+function renderViewUI() { seg($('#viewSeg'), Object.keys(VIEWS).map((k) => [k, tx('viewNames')[k]]), null, (k) => flyTo(...VIEWS[k])); }
+function renderLangUI() { seg($('#langSeg'), [['tr', 'Türkçe'], ['en', 'English']], LANG, setLang); }
+function applyStaticText() {
+  document.documentElement.lang = LANG;
+  document.title = tx('title');
+  for (const el of document.querySelectorAll('[data-i18n]')) el.innerHTML = tx(el.dataset.i18n);
+  $('#scene').setAttribute('aria-label', tx('scene'));
+  $('#curve').setAttribute('aria-label', tx('curve'));
+  $('#scrub').setAttribute('aria-label', tx('scrub'));
+  $('#play').setAttribute('aria-label', state.playing ? tx('pause') : tx('play'));
+  for (const [o, fn] of relabels) o.element.innerHTML = fn();
+}
+function setLang(l) {
+  LANG = l; applyStaticText(); lastPhaseKey = '';
+  renderMethodUI(); renderStageUI(); renderCohUI(); renderLayerUI(); renderViewUI(); renderLangUI();
+  if (state.t >= T) onTrialEnd();
+  sizeCanvases();
+}
+function flyTo(pos, target) { userMoved = true; tween = { p0: camera.position.clone(), q0: controls.target.clone(), p1: pos, q1: target, s: performance.now(), ms: 1400 }; }
+function renderSpeedUI() { seg($('#speedSeg'), [[0.05, '0.05×'], [0.12, '0.12×'], [0.3, '0.3×']], state.speed, (s) => { state.speed = s; renderSpeedUI(); }); }
+
+function setMethod(m) {
+  state.method = m; state.stage = D.methods[m].stages.length - 1;
+  buildConnections(m); conn.shown = null; applyStage(false); restartTrial(); renderMethodUI();
+}
+function setStage(k) { state.stage = k; applyStage(true); restartTrial(); }
+
+$('#play').onclick = () => {
+  state.playing = !state.playing;
+  $('#play').setAttribute('aria-label', state.playing ? tx('pause') : tx('play'));
+  $('#playIcon').innerHTML = state.playing
+    ? '<rect x="2" y="1" width="3.4" height="12" rx="1" fill="currentColor"/><rect x="8.6" y="1" width="3.4" height="12" rx="1" fill="currentColor"/>'
+    : '<path d="M3 1.5v11l9.5-5.5z" fill="currentColor"/>';
+};
+$('#scrub').addEventListener('input', (e) => { state.post = 0; decisionLabel.element.classList.remove('on'); seek(parseFloat(e.target.value)); if (state.t >= T) onTrialEnd(); });
+window.addEventListener('keydown', (e) => { if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); $('#play').click(); } });
+window.addEventListener('resize', resize);
+$('#panelToggle').onclick = () => {
+  const open = $('#panel').classList.toggle('open');
+  $('#panelToggle').setAttribute('aria-expanded', String(open));
+};
+
+// ------------------------------------------------------------------ başlat
+applyStaticText();
+buildConnections(state.method);
+resize();
+applyStage(false);
+renderMethodUI(); renderCohUI(); renderLayerUI(); renderViewUI(); renderSpeedUI(); renderLangUI(); applyLayers();
+if (Q.has('t')) {
+  brainUniforms.uReveal.value = 1.3; seek(clamp(parseFloat(Q.get('t')) || 0, 0, T));
+  if (state.t >= T) { onTrialEnd(); state.post = parseFloat(Q.get('post')) || 0; }
+}
+if (Q.has('pause')) $('#play').click();
+if (Q.has('clean')) {
+  document.body.classList.add('clean');
+  userMoved = true;
+  camera.position.set(-0.5, 0.7, 6.6); controls.target.set(-0.68, 0.34, 0.3);
+}
+if (VIEWS[Q.get('view')]) { userMoved = true; camera.position.copy(VIEWS[Q.get('view')][0]); controls.target.copy(VIEWS[Q.get('view')][1]); }
+
+let last = performance.now();
+function frame(now) {
+  const dt = clamp(now - last, 0, 64); last = now;
+  if (state.playing) advance(dt);
+  if (tween) {
+    const k = clamp((now - tween.s) / tween.ms, 0, 1), e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    camera.position.lerpVectors(tween.p0, tween.p1, e); controls.target.lerpVectors(tween.q0, tween.q1, e);
+    if (k >= 1) tween = null;
+  }
+  updateNeurons(); updateParticles(now); updateEffects(dt); drawRates(); drawDots(); updateNarrative();
+  controls.update(); renderer.render(scene, camera); labelRenderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
