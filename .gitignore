@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+
+# Simulation outputs (regenerate with the CLI)
+outputs/
+pretrained/*/*.png
+
+# Editor / tooling
+.vscode/
+.idea/
+.claude/
+*.swp
+.DS_Store
+Thumbs.db

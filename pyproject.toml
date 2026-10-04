@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "macaque-decision-snn"
+version = "1.0.0"
+description = "A biologically grounded spiking network of macaque MT and LIP that learns the random-dot motion task with surrogate gradients and with dopamine-modulated STDP."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Muhammed Yusuf Adın" }]
+requires-python = ">=3.10"
+keywords = [
+    "spiking neural networks", "computational neuroscience", "decision making",
+    "surrogate gradient", "STDP", "dopamine", "macaque", "LIP", "MT",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "numpy>=1.26",
+    "torch>=2.2",
+    "scipy>=1.11",
+    "matplotlib>=3.8",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+monkeybrain = "monkeybrain.__main__:main"
+
+[project.urls]
+"Live demo" = "https://ethyusuf.github.io/macaque-decision-snn/"
+Repository = "https://github.com/EthYusuf/macaque-decision-snn"
+
+[tool.setuptools]
+packages = ["monkeybrain", "monkeybrain.learning"]
+
+[tool.setuptools.package-data]
+monkeybrain = ["templates/*.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
