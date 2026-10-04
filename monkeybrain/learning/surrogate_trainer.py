@@ -15,6 +15,7 @@ import torch
 import torch.nn.functional as F
 
 from ..config import Config
+from ..i18n import pick
 from ..network import SpikingBrain
 from ..task import RandomDotTask
 
@@ -66,7 +67,10 @@ def train_surrogate(
             mean_acc = sum(h["accuracy"] for h in recent) / len(recent)
             elapsed = time.time() - t0
             eta = elapsed / it * (p.iters - it)
-            log(f"  [ML]  adım {it:4d}/{p.iters}  kayıp {loss.item():.3f}  "
-                f"doğruluk {mean_acc:5.1%}  E {rate_e:4.1f} Hz  I {rate_i:4.1f} Hz  "
-                f"(kalan ~{eta:4.0f} sn)")
+            log(pick(f"  [ML]  adım {it:4d}/{p.iters}  kayıp {loss.item():.3f}  "
+                     f"doğruluk {mean_acc:5.1%}  E {rate_e:4.1f} Hz  I {rate_i:4.1f} Hz  "
+                     f"(kalan ~{eta:4.0f} sn)",
+                     f"  [ML]  step {it:4d}/{p.iters}  loss {loss.item():.3f}  "
+                     f"accuracy {mean_acc:5.1%}  E {rate_e:4.1f} Hz  I {rate_i:4.1f} Hz  "
+                     f"(~{eta:4.0f} s left)"))
     return history

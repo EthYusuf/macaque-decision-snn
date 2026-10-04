@@ -14,6 +14,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
+from . import i18n  # noqa: E402
+
 SURFACE = "#fcfcfb"
 INK = "#0b0b0b"
 INK2 = "#52514e"
@@ -30,8 +32,7 @@ METHOD_COLORS = {"ml": BLUE, "bio": ORANGE}
 METHOD_NAMES = {"ml": "ML (surrogate gradient)", "bio": "Biyolojik (R-STDP)"}
 MARKER = dict(marker="o", markersize=7, markeredgecolor=SURFACE, markeredgewidth=1.5)
 
-# Şekil dili: "tr" veya "en". CLI'de `--lang en` ile değişir.
-LANG = "tr"
+# Şekil dili i18n.LANG'den gelir ("tr" veya "en"); CLI'de `--lang en` ile değişir.
 _TEXT = {  # anahtar: (Türkçe, English)
     "coh_axis": ("Hareket tutarlılığı (%)", "Motion coherence (%)"),
     "neuron_time": ("Zaman (ms)   (gri alan = akım verildi)", "Time (ms)   (grey band = current on)"),
@@ -94,12 +95,12 @@ _METHOD_NAMES_EN = {"ml": "ML (surrogate gradient)", "bio": "Biological (R-STDP)
 def L(key: str, *args) -> str:
     """Şekil metni, seçili dilde."""
     tr, en = _TEXT[key]
-    text = en if LANG == "en" else tr
+    text = en if i18n.LANG == "en" else tr
     return text.format(*args) if args else text
 
 
 def method_name(method: str) -> str:
-    names = _METHOD_NAMES_EN if LANG == "en" else METHOD_NAMES
+    names = _METHOD_NAMES_EN if i18n.LANG == "en" else METHOD_NAMES
     return names.get(method, method)
 
 

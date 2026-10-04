@@ -7,6 +7,8 @@
     python -m monkeybrain evaluate --method ml     # 5. maymunla aynı testleri uygula
     python -m monkeybrain compare                  # 6. karşılaştır
     python -m monkeybrain brain3d                  # 7. 3D beyin görselleştirmesi
+
+Tüm komutlar `--lang en` ile İngilizce çıktı verir: python -m monkeybrain --lang en compare
 """
 
 import argparse
@@ -18,8 +20,9 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from . import analysis, plots
+from . import analysis, i18n, plots
 from .config import Config
+from .i18n import pick
 from .network import SpikingBrain
 from .task import RandomDotTask
 from .utils import (
@@ -37,34 +40,39 @@ def _header(text: str) -> None:
 
 
 def _done(paths) -> None:
-    print("\n  Kaydedilen dosyalar:")
+    print("\n  " + pick("Kaydedilen dosyalar:", "Saved files:"))
     for p in paths:
         print(f"    - {p}")
+
+
+def _train_hint(method: str) -> str:
+    return pick("Eğitilmiş model bulunamadı. Önce: python -m monkeybrain train --method ",
+                "No trained model found. First run: python -m monkeybrain train --method ") + method
 
 
 # ----------------------------------------------------------------------------
 def cmd_neuron(args) -> None:
     from .neurons import IZHIKEVICH_DESC_EN, IZHIKEVICH_TYPES, simulate_alif, simulate_izhikevich
 
-    _header("1. Adım: Tek nöron. Kortikal hücre tipleri")
+    _header(pick("1. Adım: Tek nöron. Kortikal hücre tipleri", "Step 1: single neurons. Cortical cell types"))
     traces = []
     for name, (params, desc) in IZHIKEVICH_TYPES.items():
         t, v, I = simulate_izhikevich(*params)
-        traces.append((name, IZHIKEVICH_DESC_EN[name] if plots.LANG == "en" else desc, t, v, I))
+        traces.append((name, pick(desc, IZHIKEVICH_DESC_EN[name]), t, v, I))
     cfg = Config()
     t, v, I = simulate_alif(tau_mem=cfg.net.tau_mem_exc, tau_adapt=cfg.net.tau_adapt,
                             beta=cfg.net.beta_adapt, refractory_ms=cfg.net.refractory_ms)
-    traces.append(("ALIF", IZHIKEVICH_DESC_EN["ALIF"] if plots.LANG == "en"
-                   else "Ağda kullandığımız model (adaptif LIF)", t, v, I))
+    traces.append(("ALIF", pick("Ağda kullandığımız model (adaptif LIF)", IZHIKEVICH_DESC_EN["ALIF"]), t, v, I))
     for name, desc, t, v, I in traces:
         n = int(np.sum((v[1:] >= 29.9) & (v[:-1] < 29.9)))
-        print(f"  {name:5s} {desc:42s} {n:3d} spike / 400 ms")
+        print(f"  {name:5s} {desc:44s} {n:3d} spike / 400 ms")
     run = make_run_dir("neuron")
     _done([plots.plot_neuron_types(traces, run / "neuron_types.png")])
 
 
 def cmd_simulate(args) -> None:
-    _header("2. Adım: Eğitilmemiş ağ. Nöronlar ateşliyor ama henüz bir şey bilmiyor")
+    _header(pick("2. Adım: Eğitilmemiş ağ. Nöronlar ateşliyor ama henüz bir şey bilmiyor",
+                 "Step 2: the untrained network. Neurons fire, but know nothing yet"))
     cfg = Config()
     gen = set_seed(args.seed)
     device = get_device(args.device)
@@ -72,10 +80,14 @@ def cmd_simulate(args) -> None:
     model = SpikingBrain(cfg.net, cfg.task, seed=args.seed).to(device)
     res = analysis.run_evaluation(model, task, cfg, n_per_cond=20, generator=gen)
     s = analysis.summarize(res, cfg, model)
-    print(f"  Ağ: {cfg.task.n_mt} MT girdi, {cfg.net.n_exc} E + {cfg.net.n_inh} I LIP nöronu")
-    print(f"  Ortalama hız: E {s['rate_exc_hz']:.1f} Hz, I {s['rate_inh_hz']:.1f} Hz "
-          "(gerçek korteks: E ~1-10 Hz, FS internöron daha yüksek)")
-    print(f"  Doğruluk (eğitimsiz): %{s['overall_accuracy'] * 100:.1f}  (beklenen ~%50 = yazı-tura)")
+    print(pick(f"  Ağ: {cfg.task.n_mt} MT girdi, {cfg.net.n_exc} E + {cfg.net.n_inh} I LIP nöronu",
+               f"  Network: {cfg.task.n_mt} MT inputs, {cfg.net.n_exc} E + {cfg.net.n_inh} I LIP neurons"))
+    print(pick(f"  Ortalama hız: E {s['rate_exc_hz']:.1f} Hz, I {s['rate_inh_hz']:.1f} Hz "
+               "(gerçek korteks: E ~1-10 Hz, FS internöron daha yüksek)",
+               f"  Mean rate: E {s['rate_exc_hz']:.1f} Hz, I {s['rate_inh_hz']:.1f} Hz "
+               "(real cortex: E ~1-10 Hz, FS interneurons higher)"))
+    print(pick(f"  Doğruluk (eğitimsiz): %{s['overall_accuracy'] * 100:.1f}  (beklenen ~%50 = yazı-tura)",
+               f"  Accuracy (untrained): {s['overall_accuracy'] * 100:.1f}%  (expected ~50% = coin flip)"))
     run = make_run_dir("simulate")
     _done([
         plots.plot_raster(res["example"], model, cfg, run / "raster_untrained.png",
@@ -102,8 +114,9 @@ def cmd_train(args) -> None:
     if args.batch_size:
         cfg.train.batch_size = args.batch_size
 
-    name = plots.METHOD_NAMES[method]
-    _header(f"Eğitim: {name}  ({cfg.train.iters} adım x {cfg.train.batch_size} deneme)")
+    name = plots.method_name(method)
+    _header(pick(f"Eğitim: {name}  ({cfg.train.iters} adım x {cfg.train.batch_size} deneme)",
+                 f"Training: {name}  ({cfg.train.iters} steps x {cfg.train.batch_size} trials)"))
     gen = set_seed(cfg.train.seed)
     device = get_device(args.device)
     task = RandomDotTask(cfg.task, device)
@@ -122,7 +135,7 @@ def cmd_train(args) -> None:
 
     t0 = time.time()
     history = TRAINERS[method](model, task, cfg, gen, on_step=on_step)
-    print(f"\n  Eğitim süresi: {time.time() - t0:.0f} sn")
+    print(pick(f"\n  Eğitim süresi: {time.time() - t0:.0f} sn", f"\n  Training time: {time.time() - t0:.0f} s"))
 
     save_checkpoint(run / "model.pt", model, cfg, init_state, snapshots)
     save_json(run / "config.json", cfg.to_dict())
@@ -137,7 +150,9 @@ def evaluate_run(run: Path, device, n_trials: int | None = None) -> dict:
     model, cfg, init_state = load_checkpoint(run, device)
     method = cfg.train.method
     n = n_trials or cfg.train.eval_trials
-    _header(f"Değerlendirme: {plots.METHOD_NAMES[method]}  ({n} deneme x {2 * len(cfg.task.coherences)} koşul)")
+    n_cond = 2 * len(cfg.task.coherences)
+    _header(pick(f"Değerlendirme: {plots.method_name(method)}  ({n} deneme x {n_cond} koşul)",
+                 f"Evaluation: {plots.method_name(method)}  ({n} trials x {n_cond} conditions)"))
     gen = set_seed(cfg.train.seed + 1000)  # eğitimde görülmemiş denemeler
     task = RandomDotTask(cfg.task, device)
     res = analysis.run_evaluation(model, task, cfg, n, gen)
@@ -151,17 +166,21 @@ def evaluate_run(run: Path, device, n_trials: int | None = None) -> dict:
     summary["direction_selectivity"] = analysis.direction_selectivity(final_prof, cos_pref)
 
     # Tablo
-    print(f"\n  {'Tutarlılık':>11s} {'Doğruluk':>9s} {'Karar süresi':>13s}")
+    h_coh, h_acc, h_rt = pick("Tutarlılık", "Coherence"), pick("Doğruluk", "Accuracy"), pick("Karar süresi", "Decision time")
+    print(f"\n  {h_coh:>11s} {h_acc:>9s} {h_rt:>14s}")
     for c, a, rt in zip(summary["coherences"], summary["accuracy"], summary["decision_time_ms"]):
         rt_s = f"{rt:7.0f} ms" if rt is not None else "      -"
-        print(f"  {c * 100:10.1f}% {a * 100:8.1f}% {rt_s:>13s}")
+        print(f"  {c * 100:10.1f}% {a * 100:8.1f}% {rt_s:>14s}")
     w = summary["weibull"]
-    print(f"\n  Psikometrik eşik (Weibull alpha): %{w['alpha'] * 100:.1f}   "
-          f"(maymun ~%{analysis.MONKEY_REFERENCE['alpha'] * 100:.0f})")
-    print(f"  Yön seçiciliği (ağırlıklar): {summary['direction_selectivity_init']:+.2f} -> "
-          f"{summary['direction_selectivity']:+.2f}")
-    print(f"  Ortalama hız: E {summary['rate_exc_hz']:.1f} Hz, I {summary['rate_inh_hz']:.1f} Hz")
-    print(f"  Seçilen havuzun tepe hızı: {summary['peak_rate_max_hz']:.0f} Hz  (gerçek LIP ~60-70 Hz)")
+    monkey = analysis.MONKEY_REFERENCE["alpha"] * 100
+    print(pick(f"\n  Psikometrik eşik (Weibull alpha): %{w['alpha'] * 100:.1f}   (maymun ~%{monkey:.0f})",
+               f"\n  Psychometric threshold (Weibull alpha): {w['alpha'] * 100:.1f}%   (monkey ~{monkey:.0f}%)"))
+    print(pick("  Yön seçiciliği (ağırlıklar): ", "  Direction selectivity (weights): ")
+          + f"{summary['direction_selectivity_init']:+.2f} -> {summary['direction_selectivity']:+.2f}")
+    print(pick("  Ortalama hız: ", "  Mean rate: ")
+          + f"E {summary['rate_exc_hz']:.1f} Hz, I {summary['rate_inh_hz']:.1f} Hz")
+    print(pick(f"  Seçilen havuzun tepe hızı: {summary['peak_rate_max_hz']:.0f} Hz  (gerçek LIP ~60-70 Hz)",
+               f"  Peak rate of the chosen pool: {summary['peak_rate_max_hz']:.0f} Hz  (real LIP ~60-70 Hz)"))
 
     levels, acc, sem = analysis.accuracy_by_coherence(res)
     signed, p_right = analysis.p_right_by_signed_coherence(res)
@@ -198,17 +217,17 @@ def evaluate_run(run: Path, device, n_trials: int | None = None) -> dict:
 def cmd_evaluate(args) -> None:
     run = Path(args.run) if args.run else latest_run(args.method)
     if run is None or not (run / "model.pt").exists():
-        sys.exit(f"Eğitilmiş model bulunamadı. Önce: python -m monkeybrain train --method {args.method}")
+        sys.exit(_train_hint(args.method))
     evaluate_run(run, get_device(args.device), args.trials)
 
 
 def cmd_compare(args) -> None:
-    _header("Karşılaştırma: ML, biyolojik öğrenme ve maymun")
+    _header(pick("Karşılaştırma: ML, biyolojik öğrenme ve maymun", "Comparison: ML, biological learning and the monkey"))
     runs = {}
     for method, given in (("ml", args.ml), ("bio", args.bio)):
         run = Path(given) if given else latest_run(method)
         if run is None:
-            sys.exit(f"'{method}' çalışması bulunamadı. Önce: python -m monkeybrain train --method {method}")
+            sys.exit(_train_hint(method))
         metrics = load_json(run / "metrics.json")
         if "eval" not in metrics:
             metrics = evaluate_run(run, get_device(args.device))
@@ -219,27 +238,31 @@ def cmd_compare(args) -> None:
             "final_prof": {k: np.array(v) for k, v in prof["final"].items()},
             "pref_deg": np.array(prof["pref_deg"]), "dir": run,
         }
-        print(f"  {plots.METHOD_NAMES[method]:26s} <- {run}")
+        print(f"  {plots.method_name(method):26s} <- {run}")
 
     ml, bio = runs["ml"]["eval"], runs["bio"]["eval"]
     from .analysis import MONKEY_REFERENCE, weibull
     ref = MONKEY_REFERENCE
-    print(f"\n  {'Tutarlılık':>11s} {'ML':>8s} {'Biyolojik':>10s} {'Maymun*':>9s}")
+    h_bio, h_monkey = pick("Biyolojik", "Biological"), pick("Maymun*", "Monkey*")
+    print(f"\n  {pick('Tutarlılık', 'Coherence'):>11s} {'ML':>8s} {h_bio:>10s} {h_monkey:>9s}")
     for c, a_ml, a_bio in zip(ml["coherences"], ml["accuracy"], bio["accuracy"]):
         print(f"  {c * 100:10.1f}% {a_ml * 100:7.1f}% {a_bio * 100:9.1f}% "
               f"{weibull(c, ref['alpha'], ref['beta']) * 100:8.1f}%")
-    print("  * yaklaşık referans eğrisi, gerçek veri değil")
-    print(f"\n  {'':26s} {'ML':>10s} {'Biyolojik':>10s}")
+    print(pick("  * yaklaşık referans eğrisi, gerçek veri değil", "  * approximate reference curve, not real data"))
+    print(f"\n  {'':28s} {'ML':>10s} {h_bio:>10s}")
     rows = [
-        ("Psikometrik eşik", f"%{ml['weibull']['alpha'] * 100:.1f}", f"%{bio['weibull']['alpha'] * 100:.1f}"),
-        ("Yön seçiciliği", f"{ml['direction_selectivity']:+.2f}", f"{bio['direction_selectivity']:+.2f}"),
-        ("Görülen deneme", f"{runs['ml']['history'][-1]['trials']}", f"{runs['bio']['history'][-1]['trials']}"),
-        ("E hızı (Hz)", f"{ml['rate_exc_hz']:.1f}", f"{bio['rate_exc_hz']:.1f}"),
-        ("Tepe havuz hızı (Hz)", f"{ml.get('peak_rate_max_hz', float('nan')):.0f}",
+        (pick("Psikometrik eşik", "Psychometric threshold"),
+         f"{ml['weibull']['alpha'] * 100:.1f}%", f"{bio['weibull']['alpha'] * 100:.1f}%"),
+        (pick("Yön seçiciliği", "Direction selectivity"),
+         f"{ml['direction_selectivity']:+.2f}", f"{bio['direction_selectivity']:+.2f}"),
+        (pick("Görülen deneme", "Trials seen"),
+         f"{runs['ml']['history'][-1]['trials']}", f"{runs['bio']['history'][-1]['trials']}"),
+        (pick("E hızı (Hz)", "E rate (Hz)"), f"{ml['rate_exc_hz']:.1f}", f"{bio['rate_exc_hz']:.1f}"),
+        (pick("Tepe havuz hızı (Hz)", "Peak pool rate (Hz)"), f"{ml.get('peak_rate_max_hz', float('nan')):.0f}",
          f"{bio.get('peak_rate_max_hz', float('nan')):.0f}"),
     ]
     for name, a, b in rows:
-        print(f"  {name:26s} {a:>10s} {b:>10s}")
+        print(f"  {name:28s} {a:>10s} {b:>10s}")
 
     run = make_run_dir("compare")
     path = plots.plot_comparison(runs, ml["coherences"], runs["ml"]["pref_deg"], run / "comparison.png")
@@ -250,60 +273,63 @@ def cmd_compare(args) -> None:
 def cmd_brain3d(args) -> None:
     from .export3d import export_brain3d
 
-    _header("3D beyin: eğitilmiş modellerin gerçek spike verisiyle")
+    _header(pick("3D beyin: eğitilmiş modellerin gerçek spike verisiyle",
+                 "3D brain: real spikes from the trained models"))
     runs = {}
     for method, given in (("ml", args.ml), ("bio", args.bio)):
         run = Path(given) if given else latest_run(method)
         if run is not None:
             runs[method] = run
-            print(f"  {plots.METHOD_NAMES[method]:26s} <- {run}")
+            print(f"  {plots.method_name(method):26s} <- {run}")
     if not runs:
-        sys.exit("Eğitilmiş model bulunamadı. Önce: python -m monkeybrain train --method bio")
+        sys.exit(_train_hint("bio"))
     out_path = Path(args.out) if args.out else make_run_dir("brain3d") / "beyin_3d.html"
     path = export_brain3d(runs, out_path, site_url=args.site_url)
     _done([path])
     print()
-    print("  Dosyaya çift tıklayarak tarayıcıda aç. (three.js ve yazı tipleri internetten yüklenir.)")
+    print(pick("  Dosyaya çift tıklayarak tarayıcıda aç. (three.js ve yazı tipleri internetten yüklenir.)",
+               "  Open the file in a browser. (three.js and fonts load from the internet.)"))
 
 
 # ----------------------------------------------------------------------------
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="python -m monkeybrain",
-        description="Makak korteksinden esinlenen spiking ağ: hareket yönü kararı öğrenimi.",
+        description="Spiking MT -> LIP network that learns the random-dot motion task "
+                    "(makak korteksinden esinlenen spiking ağ).",
     )
     ap.add_argument("--lang", choices=["tr", "en"], default=os.environ.get("MONKEYBRAIN_LANG", "tr"),
-                    help="şekillerin dili (tr/en); ör. python -m monkeybrain --lang en compare")
+                    help="output language / çıktı dili (tr, en); e.g. python -m monkeybrain --lang en compare")
     sub = ap.add_subparsers(dest="command", required=True)
 
     def common(p):
-        p.add_argument("--seed", type=int, default=42, help="rastgelelik tohumu (tekrarlanabilirlik)")
+        p.add_argument("--seed", type=int, default=42, help="random seed / rastgelelik tohumu")
         p.add_argument("--device", default="auto", help="auto | cpu | cuda")
 
-    sub.add_parser("neuron", help="tek nöron tiplerini çiz")
-    p = sub.add_parser("simulate", help="eğitilmemiş ağı simüle et")
+    sub.add_parser("neuron", help="single-neuron cell types / tek nöron tipleri")
+    p = sub.add_parser("simulate", help="simulate the untrained network / eğitilmemiş ağ")
     common(p)
-    p = sub.add_parser("train", help="ağı eğit")
+    p = sub.add_parser("train", help="train the network / ağı eğit")
     common(p)
     p.add_argument("--method", choices=["ml", "bio"], required=True)
-    p.add_argument("--iters", type=int, help="eğitim adımı sayısı")
-    p.add_argument("--batch-size", type=int, help="adım başına deneme")
-    p.add_argument("--quick", action="store_true", help="hızlı demo (~1-2 dk)")
-    p.add_argument("--no-eval", action="store_true", help="eğitim sonrası değerlendirmeyi atla")
-    p = sub.add_parser("evaluate", help="eğitilmiş modeli test et")
+    p.add_argument("--iters", type=int, help="training steps / eğitim adımı sayısı")
+    p.add_argument("--batch-size", type=int, help="trials per step / adım başına deneme")
+    p.add_argument("--quick", action="store_true", help="quick demo / hızlı demo (~1-2 min)")
+    p.add_argument("--no-eval", action="store_true", help="skip evaluation / değerlendirmeyi atla")
+    p = sub.add_parser("evaluate", help="test a trained model / eğitilmiş modeli test et")
     common(p)
-    p.add_argument("--run", help="çalışma klasörü (varsayılan: en yenisi)")
+    p.add_argument("--run", help="run folder (default: latest) / çalışma klasörü")
     p.add_argument("--method", choices=["ml", "bio"], default="ml")
-    p.add_argument("--trials", type=int, help="koşul başına deneme")
-    p = sub.add_parser("compare", help="ML ve biyolojik öğrenmeyi karşılaştır")
+    p.add_argument("--trials", type=int, help="trials per condition / koşul başına deneme")
+    p = sub.add_parser("compare", help="compare ML and biological learning / karşılaştır")
     common(p)
-    p.add_argument("--ml", help="ML çalışma klasörü (varsayılan: en yenisi)")
-    p.add_argument("--bio", help="biyolojik çalışma klasörü (varsayılan: en yenisi)")
-    p = sub.add_parser("brain3d", help="etkileşimli 3D beyin sayfası oluştur")
-    p.add_argument("--ml", help="ML çalışma klasörü (varsayılan: en yenisi)")
-    p.add_argument("--bio", help="biyolojik çalışma klasörü (varsayılan: en yenisi)")
-    p.add_argument("--out", help="HTML dosyasının yolu (varsayılan: outputs/brain3d_<tarih>/beyin_3d.html)")
-    p.add_argument("--site-url", help="yayın adresi; verilirse sosyal medya önizleme etiketleri eklenir")
+    p.add_argument("--ml", help="ML run folder (default: latest)")
+    p.add_argument("--bio", help="biological run folder (default: latest)")
+    p = sub.add_parser("brain3d", help="build the interactive 3D page / 3D beyin sayfası")
+    p.add_argument("--ml", help="ML run folder (default: latest)")
+    p.add_argument("--bio", help="biological run folder (default: latest)")
+    p.add_argument("--out", help="output HTML path (default: outputs/brain3d_<time>/beyin_3d.html)")
+    p.add_argument("--site-url", help="public URL; adds social preview tags / sosyal önizleme etiketleri")
     return ap
 
 
@@ -314,7 +340,7 @@ def main(argv=None) -> None:
         except (AttributeError, ValueError):
             pass
     args = build_parser().parse_args(argv)
-    plots.LANG = args.lang
+    i18n.set_lang(args.lang)
     {"neuron": cmd_neuron, "simulate": cmd_simulate, "train": cmd_train,
      "evaluate": cmd_evaluate, "compare": cmd_compare, "brain3d": cmd_brain3d}[args.command](args)
 

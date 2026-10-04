@@ -34,6 +34,7 @@ import time
 import torch
 
 from ..config import Config, TrainParams
+from ..i18n import pick
 from ..network import SpikingBrain
 from ..task import RandomDotTask
 
@@ -139,7 +140,10 @@ def train_rstdp(
                 mean_acc = sum(h["accuracy"] for h in recent) / len(recent)
                 elapsed = time.time() - t0
                 eta = elapsed / it * (p.iters - it)
-                log(f"  [BIO] adım {it:4d}/{p.iters}  |dopamin| {history[-1]['dopamine']:.2f}  "
-                    f"doğruluk {mean_acc:5.1%}  E {rate_e:4.1f} Hz  I {rate_i:4.1f} Hz  "
-                    f"(kalan ~{eta:4.0f} sn)")
+                log(pick(f"  [BIO] adım {it:4d}/{p.iters}  |dopamin| {history[-1]['dopamine']:.2f}  "
+                         f"doğruluk {mean_acc:5.1%}  E {rate_e:4.1f} Hz  I {rate_i:4.1f} Hz  "
+                         f"(kalan ~{eta:4.0f} sn)",
+                         f"  [BIO] step {it:4d}/{p.iters}  |dopamine| {history[-1]['dopamine']:.2f}  "
+                         f"accuracy {mean_acc:5.1%}  E {rate_e:4.1f} Hz  I {rate_i:4.1f} Hz  "
+                         f"(~{eta:4.0f} s left)"))
     return history
