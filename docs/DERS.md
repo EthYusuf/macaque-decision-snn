@@ -368,6 +368,12 @@ Diğer parametreler: `lang=tr` / `lang=en` (dil), `clean` (yalnızca sahne; sunu
 
 Canlı sürüm: <https://ethyusuf.github.io/macaque-decision-snn/>
 
+### Bulutta çalıştırmak (Kaggle / Colab)
+
+`notebooks/macaque-decision-snn.ipynb`, her şeyi baştan yapar: testler, iki eğitim, maymun testleri ve
+3D sayfa. README'deki "Open in Kaggle" düğmesiyle açılır. Kaggle'da *Settings → Internet* açık olmalı.
+Notebook `notebooks/build_notebook.py` ile üretilir; hücreleri değiştirmek için bu dosyayı düzenle.
+
 ### Hazır modeller ve İngilizce şekiller
 
 Depoda `pretrained/ml` ve `pretrained/bio` altında eğitilmiş modeller var. Henüz eğitim yapmadıysan
