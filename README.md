@@ -6,7 +6,6 @@
 
 [![Live 3D demo](https://img.shields.io/badge/▶_live_3D_demo-open-f2c14e?style=for-the-badge)](https://ethyusuf.github.io/macaque-decision-snn/)
 
-[![tests](https://github.com/EthYusuf/macaque-decision-snn/actions/workflows/tests.yml/badge.svg)](https://github.com/EthYusuf/macaque-decision-snn/actions/workflows/tests.yml)
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![PyTorch](https://img.shields.io/badge/PyTorch-spiking_networks-ee4c2c)
 ![Three.js](https://img.shields.io/badge/Three.js-3D-black)
