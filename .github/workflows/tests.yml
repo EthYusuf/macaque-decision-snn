@@ -24,7 +24,7 @@ jobs:
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install -e ".[dev]"
       - name: Run tests
-        run: pytest -q
+        run: pytest -q --cov=monkeybrain --cov-report=term
       - name: CLI smoke test (pretrained models -> 3D page)
         run: |
           monkeybrain neuron
