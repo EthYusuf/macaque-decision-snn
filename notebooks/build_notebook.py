@@ -52,7 +52,8 @@ REPO = "https://github.com/EthYusuf/macaque-decision-snn.git"
 import importlib.util, os, platform, shutil, subprocess, sys
 from pathlib import Path
 
-WORK = Path("/kaggle/working") if Path("/kaggle/working").exists() else Path.cwd()
+ON_KAGGLE = "KAGGLE_KERNEL_RUN_TYPE" in os.environ          # set by Kaggle in every notebook session
+WORK = Path("/kaggle/working") if ON_KAGGLE else Path.cwd()  # notebook output folder
 SRC = Path("/tmp/macaque-decision-snn")
 if not SRC.exists():
     subprocess.run(["git", "clone", "--depth", "1", REPO, str(SRC)], check=True)
